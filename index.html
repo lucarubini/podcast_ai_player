@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Player with Transcription</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --bg-color: #f5f5f5;
+            --text-color: #333;
+            --border-color: #ddd;
+            --highlight-color: #f1c40f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-container:hover {
+            border-color: var(--primary-color);
+        }
+
+        .upload-container.drag-over {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .upload-container p {
+            margin: 10px 0;
+            color: #666;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-success {
+            background-color: var(--secondary-color);
+        }
+
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+
+        .btn-disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .btn-disabled:hover {
+            background-color: #7f8c8d;
+        }
+
+        .player-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .audio-info {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .play-pause-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .play-pause-btn:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .play-pause-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .time-display {
+            font-family: monospace;
+            font-size: 16px;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background-color: var(--border-color);
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary-color);
+            border-radius: 4px;
+            width: 0;
+            transition: width 0.1s linear;
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+
+        .transcription-container {
+            display: none;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .transcription-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .transcript-segment {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 3px solid var(--border-color);
+            transition: background-color 0.3s ease;
+        }
+
+        .transcript-segment:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left-color: var(--primary-color);
+        }
+
+        .segment-time {
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--primary-color);
+            cursor: pointer;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        .segment-time:hover {
+            text-decoration: underline;
+        }
+
+        .segment-text {
+            line-height: 1.5;
+        }
+
+        .currently-playing {
+            background-color: rgba(46, 204, 113, 0.1);
+            border-left-color: var(--secondary-color);
+        }
+
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(52, 152, 219, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Player with Transcription</h1>
+        
+        <div id="uploadContainer" class="upload-container">
+            <p>Upload your audio file</p>
+            <p>or drag and drop it here</p>
+            <input type="file" id="fileInput" class="file-input" accept="audio/*" />
+            <button class="btn" id="uploadBtn">Select File</button>
+        </div>
+        
+        <div id="playerContainer" class="player-container">
+            <div class="audio-info" id="audioInfo">No file selected</div>
+            
+            <div class="controls">
+                <button class="play-pause-btn" id="playPauseBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+                <div class="time-display">
+                    <span id="currentTime">00:00:00</span> / <span id="totalTime">00:00:00</span>
+                </div>
+            </div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            
+            <div class="button-container">
+                <button class="btn btn-success" id="transcribeBtn">Transcribe Audio</button>
+            </div>
+            
+            <div class="loading-indicator" id="loadingIndicator">
+                <div class="loading-spinner"></div>
+                <p>Transcribing your audio...</p>
+            </div>
+            
+            <div class="transcription-container" id="transcriptionContainer">
+                <div class="transcription-header">
+                    <span>Transcription</span>
+                </div>
+                <div id="transcriptionContent"></div>
+            </div>
+            
+            <div class="message" id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const uploadContainer = document.getElementById('uploadContainer');
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const playerContainer = document.getElementById('playerContainer');
+            const audioInfo = document.getElementById('audioInfo');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const currentTimeEl = document.getElementById('currentTime');
+            const totalTimeEl = document.getElementById('totalTime');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const messageEl = document.getElementById('message');
+            const transcribeBtn = document.getElementById('transcribeBtn');
+            const transcriptionContainer = document.getElementById('transcriptionContainer');
+            const transcriptionContent = document.getElementById('transcriptionContent');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            
+            // Create audio element
+            const audioElement = new Audio();
+            let isPlaying = false;
+            
+            // File tracking variables
+            let currentFile = null;
+            let fileId = null;
+            let segments = [];
+            
+            // Backend API URL - change this to match your Flask server
+            const API_URL = 'http://localhost:5000';
+            
+            // Click event for the upload button
+            uploadBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            // File selection event
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // Drag and drop events
+            uploadContainer.addEventListener('dragover', handleDragOver);
+            uploadContainer.addEventListener('dragleave', handleDragLeave);
+            uploadContainer.addEventListener('drop', handleFileDrop);
+            
+            // Play/pause button event
+            playPauseBtn.addEventListener('click', togglePlayPause);
+            
+            // Progress bar click event
+            progressContainer.addEventListener('click', setProgress);
+            
+            // Transcribe button event
+            transcribeBtn.addEventListener('click', transcribeAudio);
+            
+            // Audio events
+            audioElement.addEventListener('timeupdate', updateProgress);
+            audioElement.addEventListener('loadedmetadata', updateTotalTime);
+            audioElement.addEventListener('ended', resetPlayer);
+            
+            // Handle file selection
+            function handleFileSelect(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    uploadFile(file);
+                }
+            }
+            
+            // Handle drag over
+            function handleDragOver(e) {
+                e.preventDefault();
+                uploadContainer.classList.add('drag-over');
+            }
+            
+            // Handle drag leave
+            function handleDragLeave(e) {
+                e.preventDefault();
+                uploadContainer.classList.remove('drag-over');
+            }
+            
+            // Handle file drop
+            function handleFileDrop(e) {
+                e.preventDefault();
+                uploadContainer.classList.remove('drag-over');
+                
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('audio/')) {
+                    uploadFile(file);
+                } else {
+                    showMessage('Please upload an audio file');
+                }
+            }
+            
+            // Upload file to server
+            function uploadFile(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.file_id) {
+                        // Store file details
+                        currentFile = file;
+                        fileId = data.file_id;
+                        
+                        // Create local URL for playback
+                        const objectURL = URL.createObjectURL(file);
+                        audioElement.src = objectURL;
+                        
+                        // Update UI
+                        audioInfo.textContent = file.name;
+                        playerContainer.style.display = 'block';
+                        transcriptionContainer.style.display = 'none';
+                        transcriptionContent.innerHTML = '';
+                        segments = [];
+                        
+                        // Reset player state
+                        resetPlayerState();
+                        
+                        showMessage('Audio loaded successfully');
+                    } else {
+                        showMessage('Error uploading file: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('Error uploading file');
+                });
+            }
+            
+            // Transcribe the audio file
+            function transcribeAudio() {
+                if (!fileId) {
+                    showMessage('Please upload a file first');
+                    return;
+                }
+                
+                // Disable button and show loading indicator
+                transcribeBtn.disabled = true;
+                transcribeBtn.classList.add('btn-disabled');
+                loadingIndicator.style.display = 'block';
+                
+                fetch(`${API_URL}/transcribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        file_id: fileId,
+                        filename: currentFile.name
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading indicator
+                    loadingIndicator.style.display = 'none';
+                    
+                    if (data.segments) {
+                        segments = data.segments;
+                        displayTranscription(segments);
+                        showMessage('Transcription completed');
+                    } else {
+                        showMessage('Error: ' + data.error);
+                    }
+                    
+                    // Re-enable button
+                    transcribeBtn.disabled = false;
+                    transcribeBtn.classList.remove('btn-disabled');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('Error during transcription');
+                    loadingIndicator.style.display = 'none';
+                    transcribeBtn.disabled = false;
+                    transcribeBtn.classList.remove('btn-disabled');
+                });
+            }
+            
+            // Display transcription segments
+            function displayTranscription(segments) {
+                transcriptionContent.innerHTML = '';
+                
+                segments.forEach((segment, index) => {
+                    const segmentEl = document.createElement('div');
+                    segmentEl.className = 'transcript-segment';
+                    segmentEl.dataset.start = segment.start;
+                    segmentEl.dataset.end = segment.end;
+                    segmentEl.id = `segment-${index}`;
+                    
+                    const timeEl = document.createElement('div');
+                    timeEl.className = 'segment-time';
+                    timeEl.textContent = `[${formatTime(segment.start)} - ${formatTime(segment.end)}]`;
+                    timeEl.addEventListener('click', () => {
+                        audioElement.currentTime = segment.start;
+                        if (!isPlaying) {
+                            togglePlayPause();
+                        }
+                    });
+                    
+                    const textEl = document.createElement('div');
+                    textEl.className = 'segment-text';
+                    textEl.textContent = segment.text;
+                    
+                    segmentEl.appendChild(timeEl);
+                    segmentEl.appendChild(textEl);
+                    transcriptionContent.appendChild(segmentEl);
+                });
+                
+                // Show transcription container
+                transcriptionContainer.style.display = 'block';
+            }
+            
+            // Highlight active transcription segment
+            function highlightCurrentSegment() {
+                if (segments.length === 0) return;
+                
+                const currentTime = audioElement.currentTime;
+                
+                // Remove currently-playing class from all segments
+                document.querySelectorAll('.transcript-segment').forEach(el => {
+                    el.classList.remove('currently-playing');
+                });
+                
+                // Find and highlight current segment
+                for (let i = 0; i < segments.length; i++) {
+                    if (currentTime >= segments[i].start && currentTime <= segments[i].end) {
+                        const segmentEl = document.getElementById(`segment-${i}`);
+                        segmentEl.classList.add('currently-playing');
+                        
+                        // Scroll to segment if it's not visible
+                        if (!isElementInViewport(segmentEl, transcriptionContainer)) {
+                            segmentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        
+                        break;
+                    }
+                }
+            }
+            
+            // Check if element is visible within container
+            function isElementInViewport(el, container) {
+                const rect = el.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                
+                return (
+                    rect.top >= containerRect.top &&
+                    rect.bottom <= containerRect.bottom
+                );
+            }
+            
+            // Toggle play/pause
+            function togglePlayPause() {
+                if (audioElement.src) {
+                    if (isPlaying) {
+                        audioElement.pause();
+                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+                    } else {
+                        audioElement.play();
+                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+                    }
+                    isPlaying = !isPlaying;
+                }
+            }
+            
+            // Update progress bar
+            function updateProgress() {
+                const { currentTime, duration } = audioElement;
+                if (duration) {
+                    // Update progress bar
+                    const progressPercent = (currentTime / duration) * 100;
+                    progressBar.style.width = `${progressPercent}%`;
+                    
+                    // Update current time display
+                    currentTimeEl.textContent = formatTime(currentTime);
+                    
+                    // Highlight current segment in transcription
+                    highlightCurrentSegment();
+                }
+            }
+            
+            // Update total time display
+            function updateTotalTime() {
+                if (audioElement.duration) {
+                    totalTimeEl.textContent = formatTime(audioElement.duration);
+                }
+            }
+            
+            // Set progress on click
+            function setProgress(e) {
+                const width = this.clientWidth;
+                const clickX = e.offsetX;
+                if (audioElement.duration) {
+                    const seekTime = (clickX / width) * audioElement.duration;
+                    audioElement.currentTime = seekTime;
+                }
+            }
+            
+            // Reset player when audio ends
+            function resetPlayer() {
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+            }
+            
+            // Reset player state
+            function resetPlayerState() {
+                isPlaying = false;
+                audioElement.currentTime = 0;
+                progressBar.style.width = '0%';
+                currentTimeEl.textContent = '00:00:00';
+                playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+            }
+            
+            // Format time to hh:mm:ss
+            function formatTime(seconds) {
+                const hrs = Math.floor(seconds / 3600);
+                const mins = Math.floor((seconds % 3600) / 60);
+                const secs = Math.floor(seconds % 60);
+                
+                return [
+                    hrs.toString().padStart(2, '0'),
+                    mins.toString().padStart(2, '0'),
+                    secs.toString().padStart(2, '0')
+                ].join(':');
+            }
+            
+            // Show message
+            function showMessage(text) {
+                messageEl.textContent = text;
+                setTimeout(() => {
+                    messageEl.textContent = '';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
