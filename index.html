@@ -12,6 +12,7 @@
             --text-color: #333;
             --border-color: #ddd;
             --highlight-color: #f1c40f;
+            --danger-color: #e74c3c;
         }
 
         * {
@@ -97,6 +98,22 @@
             background-color: #27ae60;
         }
 
+        .btn-bookmark {
+            background-color: var(--highlight-color);
+        }
+
+        .btn-bookmark:hover {
+            background-color: #f39c12;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
         .btn-disabled {
             background-color: #95a5a6;
             cursor: not-allowed;
@@ -178,7 +195,7 @@
             color: #666;
         }
 
-        .transcription-container {
+        .transcription-container, .bookmarks-container {
             display: none;
             margin-top: 20px;
             max-height: 300px;
@@ -188,7 +205,7 @@
             padding: 15px;
         }
 
-        .transcription-header {
+        .transcription-header, .bookmarks-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -196,7 +213,7 @@
             font-weight: bold;
         }
 
-        .transcript-segment {
+        .transcript-segment, .bookmark-item {
             padding: 10px;
             margin-bottom: 10px;
             border-radius: 4px;
@@ -204,12 +221,12 @@
             transition: background-color 0.3s ease;
         }
 
-        .transcript-segment:hover {
+        .transcript-segment:hover, .bookmark-item:hover {
             background-color: rgba(52, 152, 219, 0.1);
             border-left-color: var(--primary-color);
         }
 
-        .segment-time {
+        .segment-time, .bookmark-time {
             font-family: monospace;
             font-size: 14px;
             color: var(--primary-color);
@@ -218,11 +235,11 @@
             margin-bottom: 5px;
         }
 
-        .segment-time:hover {
+        .segment-time:hover, .bookmark-time:hover {
             text-decoration: underline;
         }
 
-        .segment-text {
+        .segment-text, .bookmark-text {
             line-height: 1.5;
         }
 
@@ -255,6 +272,29 @@
             display: flex;
             justify-content: center;
             margin-top: 15px;
+        }
+
+        .bookmark-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bookmark-delete {
+            color: var(--danger-color);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 0 5px;
+        }
+
+        .bookmark-delete:hover {
+            transform: scale(1.1);
+        }
+
+        .no-bookmarks {
+            text-align: center;
+            color: #666;
+            padding: 20px;
         }
     </style>
 </head>
@@ -289,6 +329,7 @@
             
             <div class="button-container">
                 <button class="btn btn-success" id="transcribeBtn">Transcribe Audio</button>
+                <button class="btn btn-bookmark" id="bookmarkBtn" disabled>Add Bookmark</button>
             </div>
             
             <div class="loading-indicator" id="loadingIndicator">
@@ -302,6 +343,18 @@
                 </div>
                 <div id="transcriptionContent"></div>
             </div>
+        
+
+            <div class="bookmarks-container" id="bookmarksContainer">
+                <div class="bookmarks-header">
+                    <span>Bookmarks</span>
+                    <button class="btn btn-danger btn-sm" id="clearBookmarksBtn">Clear All</button>
+                    <button class="btn btn-success btn-sm" id="exportBookmarksBtn" disabled>Export JSONL</button>
+                </div>
+                <div id="bookmarksContent">
+                    <div class="no-bookmarks" id="noBookmarksMessage">No bookmarks yet</div>
+                </div>
+            </div>
             
             <div class="message" id="message"></div>
         </div>
@@ -309,339 +362,556 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // DOM Elements
-            const uploadContainer = document.getElementById('uploadContainer');
-            const fileInput = document.getElementById('fileInput');
-            const uploadBtn = document.getElementById('uploadBtn');
-            const playerContainer = document.getElementById('playerContainer');
-            const audioInfo = document.getElementById('audioInfo');
-            const playPauseBtn = document.getElementById('playPauseBtn');
-            const currentTimeEl = document.getElementById('currentTime');
-            const totalTimeEl = document.getElementById('totalTime');
-            const progressContainer = document.getElementById('progressContainer');
-            const progressBar = document.getElementById('progressBar');
-            const messageEl = document.getElementById('message');
-            const transcribeBtn = document.getElementById('transcribeBtn');
-            const transcriptionContainer = document.getElementById('transcriptionContainer');
-            const transcriptionContent = document.getElementById('transcriptionContent');
-            const loadingIndicator = document.getElementById('loadingIndicator');
+        // DOM Elements
+        const uploadContainer = document.getElementById('uploadContainer');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const playerContainer = document.getElementById('playerContainer');
+        const audioInfo = document.getElementById('audioInfo');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const messageEl = document.getElementById('message');
+        const transcribeBtn = document.getElementById('transcribeBtn');
+        const transcriptionContainer = document.getElementById('transcriptionContainer');
+        const transcriptionContent = document.getElementById('transcriptionContent');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const bookmarkBtn = document.getElementById('bookmarkBtn');
+        const bookmarksContainer = document.getElementById('bookmarksContainer');
+        const bookmarksContent = document.getElementById('bookmarksContent');
+        const noBookmarksMessage = document.getElementById('noBookmarksMessage');
+        const clearBookmarksBtn = document.getElementById('clearBookmarksBtn');
+        // Add new export button element
+        const exportBookmarksBtn = document.getElementById('exportBookmarksBtn');
+        
+        // Create audio element
+        const audioElement = new Audio();
+        let isPlaying = false;
+        
+        // File tracking variables
+        let currentFile = null;
+        let fileId = null;
+        let segments = [];
+        
+        // Bookmarks array
+        let bookmarks = [];
+        
+        // Backend API URL - change this to match your Flask server
+        const API_URL = 'http://localhost:5000';
+        
+        // Click event for the upload button
+        uploadBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // File selection event
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        // Drag and drop events
+        uploadContainer.addEventListener('dragover', handleDragOver);
+        uploadContainer.addEventListener('dragleave', handleDragLeave);
+        uploadContainer.addEventListener('drop', handleFileDrop);
+        
+        // Play/pause button event
+        playPauseBtn.addEventListener('click', togglePlayPause);
+        
+        // Progress bar click event
+        progressContainer.addEventListener('click', setProgress);
+        
+        // Transcribe button event
+        transcribeBtn.addEventListener('click', transcribeAudio);
+        
+        // Bookmark button event
+        bookmarkBtn.addEventListener('click', addBookmark);
+        
+        // Clear bookmarks button event
+        clearBookmarksBtn.addEventListener('click', clearBookmarks);
+        
+        // Export bookmarks button event
+        exportBookmarksBtn.addEventListener('click', exportBookmarks);
+        
+        // Audio events
+        audioElement.addEventListener('timeupdate', updateProgress);
+        audioElement.addEventListener('loadedmetadata', updateTotalTime);
+        audioElement.addEventListener('ended', resetPlayer);
+        
+        // Handle file selection
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                uploadFile(file);
+            }
+        }
+        
+        // Handle drag over
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadContainer.classList.add('drag-over');
+        }
+        
+        // Handle drag leave
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadContainer.classList.remove('drag-over');
+        }
+        
+        // Handle file drop
+        function handleFileDrop(e) {
+            e.preventDefault();
+            uploadContainer.classList.remove('drag-over');
             
-            // Create audio element
-            const audioElement = new Audio();
-            let isPlaying = false;
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('audio/')) {
+                uploadFile(file);
+            } else {
+                showMessage('Please upload an audio file');
+            }
+        }
+        
+        // Upload file to server
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
             
-            // File tracking variables
-            let currentFile = null;
-            let fileId = null;
-            let segments = [];
+            fetch(`${API_URL}/upload`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.file_id) {
+                    // Store file details
+                    currentFile = file;
+                    fileId = data.file_id;
+                    
+                    // Create local URL for playback
+                    const objectURL = URL.createObjectURL(file);
+                    audioElement.src = objectURL;
+                    
+                    // Update UI
+                    audioInfo.textContent = file.name;
+                    playerContainer.style.display = 'block';
+                    transcriptionContainer.style.display = 'none';
+                    transcriptionContent.innerHTML = '';
+                    segments = [];
+                    
+                    // Reset player state
+                    resetPlayerState();
+                    
+                    // Clear bookmarks
+                    clearBookmarks();
+                    
+                    // Disable bookmark button until transcription is done
+                    bookmarkBtn.disabled = true;
+                    exportBookmarksBtn.disabled = true;
+                    
+                    showMessage('Audio loaded successfully');
+                } else {
+                    showMessage('Error uploading file: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Error uploading file');
+            });
+        }
+        
+        // Transcribe the audio file
+        function transcribeAudio() {
+            if (!fileId) {
+                showMessage('Please upload a file first');
+                return;
+            }
             
-            // Backend API URL - change this to match your Flask server
-            const API_URL = 'http://localhost:5000';
+            // Disable button and show loading indicator
+            transcribeBtn.disabled = true;
+            transcribeBtn.classList.add('btn-disabled');
+            loadingIndicator.style.display = 'block';
             
-            // Click event for the upload button
-            uploadBtn.addEventListener('click', function() {
-                fileInput.click();
+            fetch(`${API_URL}/transcribe`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    file_id: fileId,
+                    filename: currentFile.name
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+                
+                if (data.segments) {
+                    segments = data.segments;
+                    displayTranscription(segments);
+                    showMessage('Transcription completed');
+                    
+                    // Enable bookmark button now that transcription is available
+                    bookmarkBtn.disabled = false;
+                } else {
+                    showMessage('Error: ' + data.error);
+                }
+                
+                // Re-enable button
+                transcribeBtn.disabled = false;
+                transcribeBtn.classList.remove('btn-disabled');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Error during transcription');
+                loadingIndicator.style.display = 'none';
+                transcribeBtn.disabled = false;
+                transcribeBtn.classList.remove('btn-disabled');
+            });
+        }
+        
+        // Display transcription segments
+        function displayTranscription(segments) {
+            transcriptionContent.innerHTML = '';
+            
+            segments.forEach((segment, index) => {
+                const segmentEl = document.createElement('div');
+                segmentEl.className = 'transcript-segment';
+                segmentEl.dataset.start = segment.start;
+                segmentEl.dataset.end = segment.end;
+                segmentEl.id = `segment-${index}`;
+                
+                const timeEl = document.createElement('div');
+                timeEl.className = 'segment-time';
+                timeEl.textContent = `[${formatTime(segment.start)} - ${formatTime(segment.end)}]`;
+                timeEl.addEventListener('click', () => {
+                    audioElement.currentTime = segment.start;
+                    if (!isPlaying) {
+                        togglePlayPause();
+                    }
+                });
+                
+                const textEl = document.createElement('div');
+                textEl.className = 'segment-text';
+                textEl.textContent = segment.text;
+                
+                segmentEl.appendChild(timeEl);
+                segmentEl.appendChild(textEl);
+                transcriptionContent.appendChild(segmentEl);
             });
             
-            // File selection event
-            fileInput.addEventListener('change', handleFileSelect);
+            // Show transcription container
+            transcriptionContainer.style.display = 'block';
+        }
+        
+        // Add bookmark at current time
+        function addBookmark() {
+            if (!audioElement.src || segments.length === 0) {
+                showMessage('Please upload and transcribe audio first');
+                return;
+            }
             
-            // Drag and drop events
-            uploadContainer.addEventListener('dragover', handleDragOver);
-            uploadContainer.addEventListener('dragleave', handleDragLeave);
-            uploadContainer.addEventListener('drop', handleFileDrop);
+            const currentTime = audioElement.currentTime;
+            const bookmarkId = Date.now(); // Unique ID for the bookmark
             
-            // Play/pause button event
-            playPauseBtn.addEventListener('click', togglePlayPause);
+            // Find relevant transcript segments (5 seconds before, 2 seconds after)
+            const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
             
-            // Progress bar click event
-            progressContainer.addEventListener('click', setProgress);
+            // Create bookmark object
+            const bookmark = {
+                id: bookmarkId,
+                time: currentTime,
+                text: relevantText,
+                timeFormatted: formatTime(currentTime)
+            };
             
-            // Transcribe button event
-            transcribeBtn.addEventListener('click', transcribeAudio);
+            // Add to bookmarks array
+            bookmarks.push(bookmark);
             
-            // Audio events
-            audioElement.addEventListener('timeupdate', updateProgress);
-            audioElement.addEventListener('loadedmetadata', updateTotalTime);
-            audioElement.addEventListener('ended', resetPlayer);
+            // Display bookmark
+            displayBookmarks();
             
-            // Handle file selection
-            function handleFileSelect(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    uploadFile(file);
+            // Enable export button if we have bookmarks
+            exportBookmarksBtn.disabled = bookmarks.length === 0;
+            
+            showMessage('Bookmark added');
+        }
+        
+        // Get relevant transcript text for the given time range
+        function getRelevantTranscriptText(startTime, endTime) {
+            // Ensure times are within valid range
+            startTime = Math.max(0, startTime);
+            endTime = Math.min(audioElement.duration, endTime);
+            
+            let relevantText = '';
+            
+            // Find segments that overlap with the time range
+            for (const segment of segments) {
+                // Check if segment overlaps with the range
+                if ((segment.start <= endTime) && (segment.end >= startTime)) {
+                    relevantText += segment.text + ' ';
                 }
             }
             
-            // Handle drag over
-            function handleDragOver(e) {
-                e.preventDefault();
-                uploadContainer.classList.add('drag-over');
+            return relevantText.trim() || 'No transcript available for this timestamp';
+        }
+        
+        // Display all bookmarks
+        function displayBookmarks() {
+            // Clear current bookmarks display
+            bookmarksContent.innerHTML = '';
+            
+            // Show/hide no bookmarks message
+            if (bookmarks.length === 0) {
+                noBookmarksMessage.style.display = 'block';
+                bookmarksContainer.style.display = 'block';
+                exportBookmarksBtn.disabled = true;
+                return;
             }
             
-            // Handle drag leave
-            function handleDragLeave(e) {
-                e.preventDefault();
-                uploadContainer.classList.remove('drag-over');
-            }
+            noBookmarksMessage.style.display = 'none';
+            exportBookmarksBtn.disabled = false;
             
-            // Handle file drop
-            function handleFileDrop(e) {
-                e.preventDefault();
-                uploadContainer.classList.remove('drag-over');
+            // Sort bookmarks by time
+            bookmarks.sort((a, b) => a.time - b.time);
+            
+            // Create bookmark elements
+            bookmarks.forEach(bookmark => {
+                const bookmarkEl = document.createElement('div');
+                bookmarkEl.className = 'bookmark-item';
+                bookmarkEl.dataset.id = bookmark.id;
                 
-                const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('audio/')) {
-                    uploadFile(file);
-                } else {
-                    showMessage('Please upload an audio file');
-                }
-            }
-            
-            // Upload file to server
-            function uploadFile(file) {
-                const formData = new FormData();
-                formData.append('file', file);
+                const bookmarkHeader = document.createElement('div');
+                bookmarkHeader.className = 'bookmark-actions';
                 
-                fetch(`${API_URL}/upload`, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.file_id) {
-                        // Store file details
-                        currentFile = file;
-                        fileId = data.file_id;
-                        
-                        // Create local URL for playback
-                        const objectURL = URL.createObjectURL(file);
-                        audioElement.src = objectURL;
-                        
-                        // Update UI
-                        audioInfo.textContent = file.name;
-                        playerContainer.style.display = 'block';
-                        transcriptionContainer.style.display = 'none';
-                        transcriptionContent.innerHTML = '';
-                        segments = [];
-                        
-                        // Reset player state
-                        resetPlayerState();
-                        
-                        showMessage('Audio loaded successfully');
-                    } else {
-                        showMessage('Error uploading file: ' + data.error);
+                const timeEl = document.createElement('div');
+                timeEl.className = 'bookmark-time';
+                timeEl.textContent = formatTime(bookmark.time);
+                timeEl.addEventListener('click', () => {
+                    // Jump to bookmark time and play
+                    audioElement.currentTime = bookmark.time;
+                    if (!isPlaying) {
+                        togglePlayPause();
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showMessage('Error uploading file');
                 });
+                
+                const deleteBtn = document.createElement('span');
+                deleteBtn.className = 'bookmark-delete';
+                deleteBtn.innerHTML = '&times;'; // × symbol
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteBookmark(bookmark.id);
+                });
+                
+                bookmarkHeader.appendChild(timeEl);
+                bookmarkHeader.appendChild(deleteBtn);
+                
+                const textEl = document.createElement('div');
+                textEl.className = 'bookmark-text';
+                textEl.textContent = bookmark.text;
+                
+                bookmarkEl.appendChild(bookmarkHeader);
+                bookmarkEl.appendChild(textEl);
+                bookmarksContent.appendChild(bookmarkEl);
+            });
+            
+            // Show bookmarks container
+            bookmarksContainer.style.display = 'block';
+        }
+        
+        // Delete a bookmark
+        function deleteBookmark(id) {
+            // Filter out the bookmark with the given id
+            bookmarks = bookmarks.filter(bookmark => bookmark.id !== id);
+            
+            // Update display
+            displayBookmarks();
+            
+            // Disable export button if no bookmarks left
+            exportBookmarksBtn.disabled = bookmarks.length === 0;
+            
+            showMessage('Bookmark deleted');
+        }
+        
+        // Clear all bookmarks
+        function clearBookmarks() {
+            bookmarks = [];
+            displayBookmarks();
+            exportBookmarksBtn.disabled = true;
+        }
+        
+        // Export bookmarks as JSONL
+        function exportBookmarks() {
+            if (bookmarks.length === 0) {
+                showMessage('No bookmarks to export');
+                return;
             }
             
-            // Transcribe the audio file
-            function transcribeAudio() {
-                if (!fileId) {
-                    showMessage('Please upload a file first');
-                    return;
-                }
-                
-                // Disable button and show loading indicator
-                transcribeBtn.disabled = true;
-                transcribeBtn.classList.add('btn-disabled');
-                loadingIndicator.style.display = 'block';
-                
-                fetch(`${API_URL}/transcribe`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        file_id: fileId,
-                        filename: currentFile.name
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Hide loading indicator
-                    loadingIndicator.style.display = 'none';
-                    
-                    if (data.segments) {
-                        segments = data.segments;
-                        displayTranscription(segments);
-                        showMessage('Transcription completed');
-                    } else {
-                        showMessage('Error: ' + data.error);
-                    }
-                    
-                    // Re-enable button
-                    transcribeBtn.disabled = false;
-                    transcribeBtn.classList.remove('btn-disabled');
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showMessage('Error during transcription');
-                    loadingIndicator.style.display = 'none';
-                    transcribeBtn.disabled = false;
-                    transcribeBtn.classList.remove('btn-disabled');
-                });
-            }
+            // Get the audio filename (without extension) for use in the export filename
+            const audioName = currentFile ? currentFile.name.replace(/\.[^/.]+$/, "") : "audio";
             
-            // Display transcription segments
-            function displayTranscription(segments) {
-                transcriptionContent.innerHTML = '';
-                
-                segments.forEach((segment, index) => {
-                    const segmentEl = document.createElement('div');
-                    segmentEl.className = 'transcript-segment';
-                    segmentEl.dataset.start = segment.start;
-                    segmentEl.dataset.end = segment.end;
-                    segmentEl.id = `segment-${index}`;
-                    
-                    const timeEl = document.createElement('div');
-                    timeEl.className = 'segment-time';
-                    timeEl.textContent = `[${formatTime(segment.start)} - ${formatTime(segment.end)}]`;
-                    timeEl.addEventListener('click', () => {
-                        audioElement.currentTime = segment.start;
-                        if (!isPlaying) {
-                            togglePlayPause();
-                        }
-                    });
-                    
-                    const textEl = document.createElement('div');
-                    textEl.className = 'segment-text';
-                    textEl.textContent = segment.text;
-                    
-                    segmentEl.appendChild(timeEl);
-                    segmentEl.appendChild(textEl);
-                    transcriptionContent.appendChild(segmentEl);
-                });
-                
-                // Show transcription container
-                transcriptionContainer.style.display = 'block';
-            }
+            // Prepare data for export
+            let jsonlContent = '';
             
-            // Highlight active transcription segment
-            function highlightCurrentSegment() {
-                if (segments.length === 0) return;
+            // Sort bookmarks by time
+            const sortedBookmarks = [...bookmarks].sort((a, b) => a.time - b.time);
+            
+            // Create JSONL content (one JSON object per line)
+            sortedBookmarks.forEach(bookmark => {
+                // Create export object with relevant fields
+                const exportObj = {
+                    timestamp: bookmark.time,
+                    timestamp_formatted: formatTime(bookmark.time),
+                    text: bookmark.text,
+                    audio_file: currentFile ? currentFile.name : null,
+                    file_id: fileId
+                };
                 
-                const currentTime = audioElement.currentTime;
-                
-                // Remove currently-playing class from all segments
-                document.querySelectorAll('.transcript-segment').forEach(el => {
-                    el.classList.remove('currently-playing');
-                });
-                
-                // Find and highlight current segment
-                for (let i = 0; i < segments.length; i++) {
-                    if (currentTime >= segments[i].start && currentTime <= segments[i].end) {
-                        const segmentEl = document.getElementById(`segment-${i}`);
+                // Add this object as a line in the JSONL file
+                jsonlContent += JSON.stringify(exportObj) + '\n';
+            });
+            
+            // Create Blob and download link
+            const blob = new Blob([jsonlContent], { type: 'application/x-jsonlines' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${audioName}_bookmarks.jsonl`;
+            
+            // Append, click and remove
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMessage('Bookmarks exported successfully');
+            }, 100);
+        }
+        
+        // Highlight active transcription segment
+        function highlightCurrentSegment() {
+            if (segments.length === 0) return;
+            
+            const currentTime = audioElement.currentTime;
+            
+            // Remove currently-playing class from all segments
+            document.querySelectorAll('.transcript-segment').forEach(el => {
+                el.classList.remove('currently-playing');
+            });
+            
+            // Find and highlight current segment
+            for (let i = 0; i < segments.length; i++) {
+                if (currentTime >= segments[i].start && currentTime <= segments[i].end) {
+                    const segmentEl = document.getElementById(`segment-${i}`);
+                    if (segmentEl) {
                         segmentEl.classList.add('currently-playing');
                         
                         // Scroll to segment if it's not visible
                         if (!isElementInViewport(segmentEl, transcriptionContainer)) {
                             segmentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
-                        
-                        break;
                     }
+                    break;
                 }
             }
+        }
+        
+        // Check if element is visible within container
+        function isElementInViewport(el, container) {
+            const rect = el.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
             
-            // Check if element is visible within container
-            function isElementInViewport(el, container) {
-                const rect = el.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
+            return (
+                rect.top >= containerRect.top &&
+                rect.bottom <= containerRect.bottom
+            );
+        }
+        
+        // Toggle play/pause
+        function togglePlayPause() {
+            if (audioElement.src) {
+                if (isPlaying) {
+                    audioElement.pause();
+                    playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+                } else {
+                    audioElement.play();
+                    playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+                }
+                isPlaying = !isPlaying;
+            }
+        }
+        
+        // Update progress bar
+        function updateProgress() {
+            const { currentTime, duration } = audioElement;
+            if (duration) {
+                // Update progress bar
+                const progressPercent = (currentTime / duration) * 100;
+                progressBar.style.width = `${progressPercent}%`;
                 
-                return (
-                    rect.top >= containerRect.top &&
-                    rect.bottom <= containerRect.bottom
-                );
-            }
-            
-            // Toggle play/pause
-            function togglePlayPause() {
-                if (audioElement.src) {
-                    if (isPlaying) {
-                        audioElement.pause();
-                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-                    } else {
-                        audioElement.play();
-                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
-                    }
-                    isPlaying = !isPlaying;
-                }
-            }
-            
-            // Update progress bar
-            function updateProgress() {
-                const { currentTime, duration } = audioElement;
-                if (duration) {
-                    // Update progress bar
-                    const progressPercent = (currentTime / duration) * 100;
-                    progressBar.style.width = `${progressPercent}%`;
-                    
-                    // Update current time display
-                    currentTimeEl.textContent = formatTime(currentTime);
-                    
-                    // Highlight current segment in transcription
-                    highlightCurrentSegment();
-                }
-            }
-            
-            // Update total time display
-            function updateTotalTime() {
-                if (audioElement.duration) {
-                    totalTimeEl.textContent = formatTime(audioElement.duration);
-                }
-            }
-            
-            // Set progress on click
-            function setProgress(e) {
-                const width = this.clientWidth;
-                const clickX = e.offsetX;
-                if (audioElement.duration) {
-                    const seekTime = (clickX / width) * audioElement.duration;
-                    audioElement.currentTime = seekTime;
-                }
-            }
-            
-            // Reset player when audio ends
-            function resetPlayer() {
-                isPlaying = false;
-                playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-            }
-            
-            // Reset player state
-            function resetPlayerState() {
-                isPlaying = false;
-                audioElement.currentTime = 0;
-                progressBar.style.width = '0%';
-                currentTimeEl.textContent = '00:00:00';
-                playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-            }
-            
-            // Format time to hh:mm:ss
-            function formatTime(seconds) {
-                const hrs = Math.floor(seconds / 3600);
-                const mins = Math.floor((seconds % 3600) / 60);
-                const secs = Math.floor(seconds % 60);
+                // Update current time display
+                currentTimeEl.textContent = formatTime(currentTime);
                 
-                return [
-                    hrs.toString().padStart(2, '0'),
-                    mins.toString().padStart(2, '0'),
-                    secs.toString().padStart(2, '0')
-                ].join(':');
+                // Highlight current segment in transcription
+                highlightCurrentSegment();
             }
+        }
+        
+        // Update total time display
+        function updateTotalTime() {
+            if (audioElement.duration) {
+                totalTimeEl.textContent = formatTime(audioElement.duration);
+            }
+        }
+        
+        // Set progress on click
+        function setProgress(e) {
+            const width = this.clientWidth;
+            const clickX = e.offsetX;
+            if (audioElement.duration) {
+                const seekTime = (clickX / width) * audioElement.duration;
+                audioElement.currentTime = seekTime;
+            }
+        }
+        
+        // Reset player when audio ends
+        function resetPlayer() {
+            isPlaying = false;
+            playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+        }
+        
+        // Reset player state
+        function resetPlayerState() {
+            isPlaying = false;
+            audioElement.currentTime = 0;
+            progressBar.style.width = '0%';
+            currentTimeEl.textContent = '00:00:00';
+            playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+        }
+        
+        // Format time to hh:mm:ss
+        function formatTime(seconds) {
+            seconds = Math.max(0, seconds); // Ensure seconds is not negative
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
             
-            // Show message
-            function showMessage(text) {
-                messageEl.textContent = text;
-                setTimeout(() => {
-                    messageEl.textContent = '';
-                }, 3000);
-            }
-        });
+            return [
+                hrs.toString().padStart(2, '0'),
+                mins.toString().padStart(2, '0'),
+                secs.toString().padStart(2, '0')
+            ].join(':');
+        }
+        
+        // Show message
+        function showMessage(text) {
+            messageEl.textContent = text;
+            setTimeout(() => {
+                messageEl.textContent = '';
+            }, 3000);
+        }
+    });
     </script>
 </body>
 </html>
