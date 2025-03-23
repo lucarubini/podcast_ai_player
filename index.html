@@ -421,6 +421,7 @@
                         // Update UI
                         audioInfo.textContent = file.name;
                         playerContainer.style.display = 'block';
+                        uploadContainer.style.display = 'none'; //make the upload box disappear after file is uploaded
                         transcriptionContainer.style.display = 'none';
                         transcriptionContent.innerHTML = '';
                         segments = [];
