@@ -290,6 +290,8 @@
             <div class="button-container">
                 <button class="btn btn-success" id="transcribeBtn">Transcribe Audio</button>
                 <button class="btn" id="exportBtn" style="display: none;">Export Transcript</button>
+                <button class="btn" id="importBtn">Import Transcript</button>
+                <input type="file" id="transcriptFileInput" accept="application/json" style="display: none;" />
             </div>
             
             <div class="loading-indicator" id="loadingIndicator">
@@ -327,7 +329,9 @@
             const transcriptionContent = document.getElementById('transcriptionContent');
             const loadingIndicator = document.getElementById('loadingIndicator');
             const exportBtn = document.getElementById('exportBtn');
-            
+            const importBtn = document.getElementById('importBtn');
+            const transcriptFileInput = document.getElementById('transcriptFileInput');
+
             // Create audio element
             const audioElement = new Audio();
             let isPlaying = false;
@@ -364,12 +368,15 @@
 
             // Export transcript button event
             exportBtn.addEventListener('click', exportTranscript);
-            
+           
+            // Import transcript
+            importBtn.addEventListener('click', () => transcriptFileInput.click());
+            transcriptFileInput.addEventListener('change', importTranscript);
+
             // Audio events
             audioElement.addEventListener('timeupdate', updateProgress);
             audioElement.addEventListener('loadedmetadata', updateTotalTime);
             audioElement.addEventListener('ended', resetPlayer);
-            
             
             // Handle file selection`
             function handleFileSelect(e) {
@@ -630,6 +637,11 @@
                 progressBar.style.width = '0%';
                 currentTimeEl.textContent = '00:00:00';
                 playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+            
+                if (segments.length === 0) {
+                    exportBtn.style.display = 'none';
+                }
+
             }
             
             // Format time to hh:mm:ss
@@ -654,7 +666,7 @@
             }
 
 
-            // Add this function to handle the export
+            // Function to handle the export
             function exportTranscript() {
                 if (segments.length === 0) {
                     showMessage('No transcript available to export');
@@ -690,6 +702,59 @@
                 showMessage('Transcript exported successfully');
             }
 
+            // Function to handle import of transcript
+            function importTranscript(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // Check if it's a JSON file
+                if (!file.type.includes('json')) {
+                    showMessage('Please select a JSON file');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    try {
+                        // Parse the JSON data
+                        const importedData = JSON.parse(event.target.result);
+                        
+                        // Validate the data structure
+                        if (!importedData.transcript || !Array.isArray(importedData.transcript)) {
+                            throw new Error('Invalid transcript format');
+                        }
+                        
+                        // Store the segments
+                        segments = importedData.transcript;
+                        
+                        // Display the imported transcript
+                        displayTranscription(segments);
+                        
+                        // Show a success message
+                        showMessage('Transcript imported successfully');
+                        
+                        // If there's no audio file loaded but the transcript has a filename, show it
+                        if (importedData.filename && !currentFile) {
+                            audioInfo.textContent = `Transcript for: ${importedData.filename}`;
+                            playerContainer.style.display = 'block';
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error parsing transcript:', error);
+                        showMessage('Error importing transcript: Invalid format');
+                    }
+                };
+                
+                reader.onerror = function() {
+                    showMessage('Error reading file');
+                };
+                
+                reader.readAsText(file);
+                
+                // Reset the file input so the same file can be selected again
+                transcriptFileInput.value = '';
+            }
 
         });
     </script>
