@@ -289,6 +289,7 @@
             
             <div class="button-container">
                 <button class="btn btn-success" id="transcribeBtn">Transcribe Audio</button>
+                <button class="btn" id="exportBtn" style="display: none;">Export Transcript</button>
             </div>
             
             <div class="loading-indicator" id="loadingIndicator">
@@ -325,6 +326,7 @@
             const transcriptionContainer = document.getElementById('transcriptionContainer');
             const transcriptionContent = document.getElementById('transcriptionContent');
             const loadingIndicator = document.getElementById('loadingIndicator');
+            const exportBtn = document.getElementById('exportBtn');
             
             // Create audio element
             const audioElement = new Audio();
@@ -359,13 +361,17 @@
             
             // Transcribe button event
             transcribeBtn.addEventListener('click', transcribeAudio);
+
+            // Export transcript button event
+            exportBtn.addEventListener('click', exportTranscript);
             
             // Audio events
             audioElement.addEventListener('timeupdate', updateProgress);
             audioElement.addEventListener('loadedmetadata', updateTotalTime);
             audioElement.addEventListener('ended', resetPlayer);
             
-            // Handle file selection
+            
+            // Handle file selection`
             function handleFileSelect(e) {
                 const file = e.target.files[0];
                 if (file) {
@@ -425,6 +431,7 @@
                         transcriptionContainer.style.display = 'none';
                         transcriptionContent.innerHTML = '';
                         segments = [];
+                        exportBtn.style.display = 'none';
                         
                         // Reset player state
                         resetPlayerState();
@@ -520,6 +527,9 @@
                 
                 // Show transcription container
                 transcriptionContainer.style.display = 'block';
+
+                // Show export button
+                exportBtn.style.display = 'inline-block';
             }
             
             // Highlight active transcription segment
@@ -642,6 +652,45 @@
                     messageEl.textContent = '';
                 }, 3000);
             }
+
+
+            // Add this function to handle the export
+            function exportTranscript() {
+                if (segments.length === 0) {
+                    showMessage('No transcript available to export');
+                    return;
+                }
+                
+                // Create a data object with the segments
+                const exportData = {
+                    filename: currentFile.name,
+                    transcript: segments
+                };
+                
+                // Convert to JSON string
+                const jsonString = JSON.stringify(exportData, null, 2);
+                
+                // Create a blob with the data
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                
+                // Create a download link
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `transcript_${currentFile.name.replace(/\.[^/.]+$/, '')}.json`;
+                
+                // Trigger the download
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showMessage('Transcript exported successfully');
+            }
+
+
         });
     </script>
 </body>
