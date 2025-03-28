@@ -723,7 +723,11 @@
                 
                 const bookmarkHeader = document.createElement('div');
                 bookmarkHeader.className = 'bookmark-actions';
-                
+            
+                const titleEl = document.createElement('span');
+                titleEl.className = 'bookmark-title';
+                titleEl.textContent = bookmark.title;
+
                 const timeEl = document.createElement('div');
                 timeEl.className = 'bookmark-time';
                 timeEl.textContent = formatTime(bookmark.time);
@@ -743,6 +747,7 @@
                     deleteBookmark(bookmark.id);
                 });
                 
+                bookmarkHeader.appendChild(titleEl);
                 bookmarkHeader.appendChild(timeEl);
                 bookmarkHeader.appendChild(deleteBtn);
                 
