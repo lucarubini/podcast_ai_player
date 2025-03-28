@@ -296,6 +296,24 @@
             color: #666;
             padding: 20px;
         }
+
+        .bookmark-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .bookmark-title {
+            font-weight: bold;
+            margin-right: 10px;
+            color: var(--primary-color);
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
     </style>
 </head>
 <body>
@@ -631,7 +649,10 @@
             
             const currentTime = audioElement.currentTime;
             const bookmarkId = Date.now(); // Unique ID for the bookmark
-            
+
+            // Prompt for bookmark title
+            const bookmarkTitle = prompt('Enter a title for this bookmark:', 'Bookmark') || 'Bookmark';
+
             // Find relevant transcript segments (5 seconds before, 2 seconds after)
             const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
             
@@ -640,7 +661,8 @@
                 id: bookmarkId,
                 time: currentTime,
                 text: relevantText,
-                timeFormatted: formatTime(currentTime)
+                timeFormatted: formatTime(currentTime),
+                title: bookmarkTitle
             };
             
             // Add to bookmarks array
