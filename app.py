@@ -1,26 +1,32 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 import os
-import tempfile
 import whisper
 import json
-import time
 import uuid
 
-# Create a new Flask app - change static folder to the directory where your HTML file is
-app = Flask(__name__)
+# Create Flask app with proper static and template folders
+app = Flask(__name__,
+            static_folder='static',
+            template_folder='templates')
 CORS(app)
 
 # Load Whisper model - choose model size based on your needs
 # Options: "tiny", "base", "small", "medium", "large"
 model = whisper.load_model("base")
 
+# Configuration
 UPLOAD_FOLDER = 'uploads'
 TRANSCRIPTION_FOLDER = 'transcriptions'
 
 # Create folders if they don't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(TRANSCRIPTION_FOLDER, exist_ok=True)
+
+@app.route('/')
+def index():
+    # Use render_template instead of raw file reading
+    return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -101,22 +107,9 @@ def get_transcription(transcription_id):
         'segments': segments
     })
 
-# Serve the index.html file at the root URL
-@app.route('/')
-def index():
-    return send_file('index.html')
-
-# Serve any static files
-@app.route('/<path:path>')
-def serve_static(path):
-    return send_file(path)
-
-# Helper function to send files more safely
-def send_file(path):
-    try:
-        return open(path, 'r').read()
-    except Exception as e:
-        return f"File not found: {path}", 404
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 if __name__ == '__main__':
     print("Starting server at http://localhost:5000")

@@ -1,0 +1,308 @@
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2ecc71;
+    --bg-color: #f5f5f5;
+    --text-color: #333;
+    --border-color: #ddd;
+    --highlight-color: #f1c40f;
+    --danger-color: #e74c3c;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-top: 20px;
+}
+
+h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.upload-container:hover {
+    border-color: var(--primary-color);
+}
+
+.upload-container.drag-over {
+    background-color: rgba(52, 152, 219, 0.1);
+    border-color: var(--primary-color);
+}
+
+.upload-container p {
+    margin: 10px 0;
+    color: #666;
+}
+
+.file-input {
+    display: none;
+}
+
+.btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+    margin: 5px;
+}
+
+.btn:hover {
+    background-color: #2980b9;
+}
+
+.btn-success {
+    background-color: var(--secondary-color);
+}
+
+.btn-success:hover {
+    background-color: #27ae60;
+}
+
+.btn-bookmark {
+    background-color: var(--highlight-color);
+}
+
+.btn-bookmark:hover {
+    background-color: #f39c12;
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.btn-disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+}
+
+.btn-disabled:hover {
+    background-color: #7f8c8d;
+}
+
+.player-container {
+    margin-top: 20px;
+    display: none;
+}
+
+.audio-info {
+    text-align: center;
+    margin-bottom: 15px;
+    font-weight: 500;
+    color: #555;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.play-pause-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.play-pause-btn:hover {
+    background-color: #2980b9;
+    transform: scale(1.05);
+}
+
+.play-pause-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+.time-display {
+    font-family: monospace;
+    font-size: 16px;
+}
+
+.progress-container {
+    width: 100%;
+    height: 8px;
+    background-color: var(--border-color);
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--primary-color);
+    border-radius: 4px;
+    width: 0;
+    transition: width 0.1s linear;
+}
+
+.message {
+    text-align: center;
+    margin-top: 10px;
+    color: #666;
+}
+
+.transcription-container, .bookmarks-container {
+    display: none;
+    margin-top: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.transcription-header, .bookmarks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.transcript-segment, .bookmark-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border-left: 3px solid var(--border-color);
+    transition: background-color 0.3s ease;
+}
+
+.transcript-segment:hover, .bookmark-item:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+    border-left-color: var(--primary-color);
+}
+
+.segment-time, .bookmark-time {
+    font-family: monospace;
+    font-size: 14px;
+    color: var(--primary-color);
+    cursor: pointer;
+    display: inline-block;
+    margin-bottom: 5px;
+}
+
+.segment-time:hover, .bookmark-time:hover {
+    text-decoration: underline;
+}
+
+.segment-text, .bookmark-text {
+    line-height: 1.5;
+}
+
+.currently-playing {
+    background-color: rgba(46, 204, 113, 0.1);
+    border-left-color: var(--secondary-color);
+}
+
+.loading-indicator {
+    display: none;
+    text-align: center;
+    padding: 20px;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(52, 152, 219, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.bookmark-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bookmark-delete {
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 0 5px;
+}
+
+.bookmark-delete:hover {
+    transform: scale(1.1);
+}
+
+.no-bookmarks {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+}
+
+.bookmark-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.bookmark-title {
+    font-weight: bold;
+    margin-right: 10px;
+    color: var(--primary-color);
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
