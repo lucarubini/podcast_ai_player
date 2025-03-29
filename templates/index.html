@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Player with Transcription</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Player with Transcription</h1>
+        
+        <div id="uploadContainer" class="upload-container">
+            <p>Upload your audio file</p>
+            <p>or drag and drop it here</p>
+            <input type="file" id="fileInput" class="file-input" accept="audio/*" />
+            <button class="btn" id="uploadBtn">Select File</button>
+        </div>
+        
+        <div id="playerContainer" class="player-container">
+            <div class="audio-info" id="audioInfo">No file selected</div>
+            
+            <div class="controls">
+                <button class="play-pause-btn" id="playPauseBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+                <div class="time-display">
+                    <span id="currentTime">00:00:00</span> / <span id="totalTime">00:00:00</span>
+                </div>
+            </div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            
+            <div class="button-container">
+                <button class="btn btn-success" id="transcribeBtn">Transcribe Audio</button>
+                <button class="btn" id="exportBtn" style="display: none;">Export Transcript</button>
+                <button class="btn" id="importBtn">Import Transcript</button>
+                <button class="btn btn-bookmark" id="bookmarkBtn" disabled>Add Bookmark</button>
+                <button class="btn" id="exportBtn" style="display: none;">Export Transcript</button>
+                <input type="file" id="transcriptFileInput" accept="application/json" style="display: none;" />
+            </div>
+            
+            <div class="loading-indicator" id="loadingIndicator">
+                <div class="loading-spinner"></div>
+                <p>Transcribing your audio...</p>
+            </div>
+            
+            <div class="transcription-container" id="transcriptionContainer">
+                <div class="transcription-header">
+                    <span>Transcription</span>
+                </div>
+                <div id="transcriptionContent"></div>
+            </div>
+        
+
+            <div class="bookmarks-container" id="bookmarksContainer">
+                <div class="bookmarks-header">
+                    <span>Bookmarks</span>
+                    <button class="btn btn-danger btn-sm" id="clearBookmarksBtn">Clear All</button>
+                    <button class="btn btn-success btn-sm" id="exportBookmarksBtn" disabled>Export JSONL</button>
+                </div>
+                <div id="bookmarksContent">
+                    <div class="no-bookmarks" id="noBookmarksMessage">No bookmarks yet</div>
+                </div>
+            </div>
+            
+            <div class="message" id="message"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
