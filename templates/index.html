@@ -48,14 +48,17 @@
                 <div class="loading-spinner"></div>
                 <p>Transcribing your audio...</p>
             </div>
-            
+           
             <div class="transcription-container" id="transcriptionContainer">
                 <div class="transcription-header">
-                    <span>Transcription</span>
+                    <div class="header-with-toggle">
+                        <span class="toggle-icon" id="toggleTranscription">▼</span>
+                        <span>Transcription</span>
+                    </div>
                 </div>
-                <div id="transcriptionContent"></div>
+                <div id="transcriptionContent" class="transcription-content"></div>
             </div>
-        
+
             <div class="bookmarks-container" id="bookmarksContainer">
                 <div class="bookmarks-header">
                     <div class="header-with-toggle">
