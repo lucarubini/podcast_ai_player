@@ -82,6 +82,9 @@ document.addEventListener('DOMContentLoaded', function() {
    // Add the bookmarks toggle functionality
     setupBookmarksToggle();
 
+    // Add the transcription toggle functionality
+    setupTranscriptionToggle();
+
     // Audio events
     audioElement.addEventListener('timeupdate', updateProgress);
     audioElement.addEventListener('loadedmetadata', updateTotalTime);
@@ -701,5 +704,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 bookmarksContent.classList.add('collapsed');
             }
         }
+
+
+        // Function to toggle the transcription visibility
+        function setupTranscriptionToggle() {
+            const toggleIcon = document.getElementById('toggleTranscription');
+            const transcriptionContent = document.getElementById('transcriptionContent');
+            
+            if (!toggleIcon || !transcriptionContent) return;
+            
+            // Set up the click handler
+            document.querySelector('.transcription-header .header-with-toggle').addEventListener('click', function() {
+                toggleIcon.classList.toggle('collapsed');
+                transcriptionContent.classList.toggle('collapsed');
+                
+                // Save the state to localStorage
+                const isCollapsed = transcriptionContent.classList.contains('collapsed');
+                localStorage.setItem('transcriptionCollapsed', isCollapsed);
+            });
+            
+            // Initialize based on saved state
+            const savedState = localStorage.getItem('transcriptionCollapsed');
+            if (savedState === 'true') {
+                toggleIcon.classList.add('collapsed');
+                transcriptionContent.classList.add('collapsed');
+            }
+        } 
+
+
+
 
     });
