@@ -306,3 +306,85 @@ h1 {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* Add these CSS rules to your styles.css file */
+
+.header-with-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.toggle-icon {
+    font-size: 12px;
+    margin-right: 8px;
+    transition: transform 0.3s ease;
+}
+
+.toggle-icon.collapsed {
+    transform: rotate(-90deg);
+}
+
+.bookmarks-content {
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    max-height: 300px;
+    opacity: 1;
+    overflow: hidden;
+}
+
+.bookmarks-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+.bookmarks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-weight: bold;
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px 4px 0 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Add these CSS rules to your styles.css file */
+
+.transcription-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-weight: bold;
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px 4px 0 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.transcription-content {
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    max-height: 300px;
+    opacity: 1;
+    overflow: hidden;
+}
+
+.transcription-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+/* Make sure both containers use the same styling for consistency */
+.transcription-container, .bookmarks-container {
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.transcription-content, .bookmarks-content {
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}

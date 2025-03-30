@@ -78,7 +78,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Export bookmarks button event
     exportBookmarksBtn.addEventListener('click', exportBookmarks);
-    
+   
+   // Add the bookmarks toggle functionality
+    setupBookmarksToggle();
+
+    // Add the transcription toggle functionality
+    setupTranscriptionToggle();
+
     // Audio events
     audioElement.addEventListener('timeupdate', updateProgress);
     audioElement.addEventListener('loadedmetadata', updateTotalTime);
@@ -672,5 +678,60 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset the file input so the same file can be selected again
             transcriptFileInput.value = '';
         }
+
+
+        // Function to toggle the bookmarks visibility
+        function setupBookmarksToggle() {
+            const toggleIcon = document.getElementById('toggleBookmarks');
+            const bookmarksContent = document.getElementById('bookmarksContent');
+
+            if (!toggleIcon || !bookmarksContent) return;
+
+            // Set up the click handler
+            document.querySelector('.header-with-toggle').addEventListener('click', function() {
+                toggleIcon.classList.toggle('collapsed');
+                bookmarksContent.classList.toggle('collapsed');
+
+                // Save the state to localStorage
+                const isCollapsed = bookmarksContent.classList.contains('collapsed');
+                localStorage.setItem('bookmarksCollapsed', isCollapsed);
+            });
+
+            // Initialize based on saved state
+            const savedState = localStorage.getItem('bookmarksCollapsed');
+            if (savedState === 'true') {
+                toggleIcon.classList.add('collapsed');
+                bookmarksContent.classList.add('collapsed');
+            }
+        }
+
+
+        // Function to toggle the transcription visibility
+        function setupTranscriptionToggle() {
+            const toggleIcon = document.getElementById('toggleTranscription');
+            const transcriptionContent = document.getElementById('transcriptionContent');
+            
+            if (!toggleIcon || !transcriptionContent) return;
+            
+            // Set up the click handler
+            document.querySelector('.transcription-header .header-with-toggle').addEventListener('click', function() {
+                toggleIcon.classList.toggle('collapsed');
+                transcriptionContent.classList.toggle('collapsed');
+                
+                // Save the state to localStorage
+                const isCollapsed = transcriptionContent.classList.contains('collapsed');
+                localStorage.setItem('transcriptionCollapsed', isCollapsed);
+            });
+            
+            // Initialize based on saved state
+            const savedState = localStorage.getItem('transcriptionCollapsed');
+            if (savedState === 'true') {
+                toggleIcon.classList.add('collapsed');
+                transcriptionContent.classList.add('collapsed');
+            }
+        } 
+
+
+
 
     });
