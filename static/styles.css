@@ -537,3 +537,8 @@ h1 {
         transform: translateY(-5px);
     }
 }
+
+.collapsed {
+    display: none !important;
+}
+

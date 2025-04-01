@@ -721,8 +721,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!toggleIcon || !bookmarksContent) return;
 
             // Set up the click handler
-            document.querySelector('.header-with-toggle').addEventListener('click', function() {
-                toggleIcon.classList.toggle('collapsed');
+            document.querySelector('.bookmarks-header .header-with-toggle').addEventListener('click', function() {
+                toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
                 bookmarksContent.classList.toggle('collapsed');
 
                 // Save the state to localStorage
@@ -733,11 +733,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Initialize based on saved state
             const savedState = localStorage.getItem('bookmarksCollapsed');
             if (savedState === 'true') {
-                toggleIcon.classList.add('collapsed');
+                toggleIcon.textContent = '►';
                 bookmarksContent.classList.add('collapsed');
             }
         }
-
 
         // Function to toggle the transcription visibility
         function setupTranscriptionToggle() {
@@ -748,7 +747,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Set up the click handler
             document.querySelector('.transcription-header .header-with-toggle').addEventListener('click', function() {
-                toggleIcon.classList.toggle('collapsed');
+                //toggleIcon.classList.toggle('collapsed');
+                toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
                 transcriptionContent.classList.toggle('collapsed');
                 
                 // Save the state to localStorage
