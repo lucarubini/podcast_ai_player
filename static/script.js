@@ -25,7 +25,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearBookmarksBtn = document.getElementById('clearBookmarksBtn');
     // Add new export button element
     const exportBookmarksBtn = document.getElementById('exportBookmarksBtn');
-    
+
+    const chatContainer = document.getElementById('chatContainer');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChatBtn');
+
     // Create audio element
     const audioElement = new Audio();
     let isPlaying = false;
@@ -40,7 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Backend API URL - change this to match your Flask server
     const API_URL = 'http://localhost:5000';
-    
+   
+    let chatHistory = [];
+    let isWaitingForResponse = false;
+
     // Click event for the upload button
     uploadBtn.addEventListener('click', function() {
         fileInput.click();
@@ -90,6 +98,19 @@ document.addEventListener('DOMContentLoaded', function() {
     audioElement.addEventListener('loadedmetadata', updateTotalTime);
     audioElement.addEventListener('ended', resetPlayer);
     
+    sendChatBtn.addEventListener('click', sendChatMessage);
+
+    // Chat input enter key event
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
+
+    // Add chat toggle functionality
+    setupChatToggle();
+
     // Handle file selection
     function handleFileSelect(e) {
         const file = e.target.files[0];
@@ -151,7 +172,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 transcriptionContent.innerHTML = '';
                 segments = [];
                 exportBtn.style.display = 'none';
-                
+             
+                // Hide chat container when new file is uploaded
+                chatContainer.style.display = 'none';
+                chatMessages.innerHTML = '<div class="chat-message system-message">Ask questions about the transcript or request analysis.</div>';
+                chatHistory = [];
+
                 // Reset player state
                 resetPlayerState();
                 
@@ -207,6 +233,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Enable bookmark button now that transcription is available
                 bookmarkBtn.disabled = false;
+
+                // Show chat container now that transcription is complete
+                chatContainer.style.display = 'block';
+
+                // Add welcome message
+                addMessageToChat('system', 'Transcription complete! You can now ask questions about the audio.');
+
             } else {
                 showMessage('Error: ' + data.error);
             }
@@ -732,6 +765,149 @@ document.addEventListener('DOMContentLoaded', function() {
         } 
 
 
+        function setupChatToggle() {
+            const toggleIcon = document.getElementById('toggleChat');
+            const chatContent = document.getElementById('chatContent');
+            
+            if (!toggleIcon || !chatContent) return;
+            
+            // Set up the click handler
+            document.querySelector('.chat-header .header-with-toggle').addEventListener('click', function() {
+                toggleIcon.classList.toggle('collapsed');
+                chatContent.classList.toggle('collapsed');
+                
+                // Save the state to localStorage
+                const isCollapsed = chatContent.classList.contains('collapsed');
+                localStorage.setItem('chatCollapsed', isCollapsed);
+            });
+            
+            // Initialize based on saved state
+            const savedState = localStorage.getItem('chatCollapsed');
+            if (savedState === 'true') {
+                toggleIcon.classList.add('collapsed');
+                chatContent.classList.add('collapsed');
+            }
+        }
+
+        // Function to send chat message
+        function sendChatMessage() {
+            if (isWaitingForResponse) return;
+            
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Clear input
+            chatInput.value = '';
+            
+            // Add user message to UI
+            addMessageToChat('user', message);
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            // Disable send button
+            isWaitingForResponse = true;
+            sendChatBtn.disabled = true;
+            
+            // Get relevant transcript context
+            let transcriptContext = '';
+            if (segments.length > 0) {
+                // Format segments for context
+                transcriptContext = segments.map(segment => 
+                    `[${formatTime(segment.start)} - ${formatTime(segment.end)}]: ${segment.text}`
+                ).join('\n');
+            }
+            
+            // Make API request
+            fetch(`${API_URL}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: message,
+                    transcript_context: transcriptContext,
+                    chat_history: chatHistory.slice(-10) // Send last 10 messages for context
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove typing indicator
+                removeTypingIndicator();
+                
+                if (data.response) {
+                    // Add assistant message to UI
+                    addMessageToChat('assistant', data.response);
+                } else if (data.error) {
+                    // Show error as system message
+                    addMessageToChat('system', `Error: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Chat error:', error);
+                removeTypingIndicator();
+                addMessageToChat('system', 'Error connecting to the assistant. Please try again later.');
+            })
+            .finally(() => {
+                // Re-enable send button
+                isWaitingForResponse = false;
+                sendChatBtn.disabled = false;
+            });
+        }
+
+        // Function to add message to chat
+        function addMessageToChat(role, content) {
+            // Create message element
+            const messageEl = document.createElement('div');
+            messageEl.className = `chat-message ${role}-message`;
+            messageEl.textContent = content;
+            
+            // Add to chat container
+            chatMessages.appendChild(messageEl);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Add to chat history if it's a user or assistant message
+            if (role === 'user' || role === 'assistant') {
+                chatHistory.push({ role, content });
+            }
+            
+            // Show chat container if it's hidden
+            if (chatContainer.style.display === 'none' || !chatContainer.style.display) {
+                chatContainer.style.display = 'block';
+            }
+        }
+
+        // Function to show typing indicator
+        function showTypingIndicator() {
+            const typingEl = document.createElement('div');
+            typingEl.className = 'chat-typing';
+            typingEl.id = 'typingIndicator';
+            
+            const indicatorEl = document.createElement('div');
+            indicatorEl.className = 'typing-indicator';
+            
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'typing-dot';
+                indicatorEl.appendChild(dot);
+            }
+            
+            typingEl.appendChild(indicatorEl);
+            chatMessages.appendChild(typingEl);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Function to remove typing indicator
+        function removeTypingIndicator() {
+            const typingEl = document.getElementById('typingIndicator');
+            if (typingEl) {
+                typingEl.remove();
+            }
+        }
 
 
     });
