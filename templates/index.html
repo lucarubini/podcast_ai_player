@@ -46,7 +46,18 @@
                 <div class="loading-spinner"></div>
                 <p>Transcribing your audio...</p>
             </div>
-        
+
+            <div class="transcription-container" id="transcriptionContainer">
+                <div class="transcription-header">
+                    <div class="header-with-toggle">
+                        <span class="toggle-icon" id="toggleTranscription">▼</span>
+                        <span>Transcription</span>
+                    </div>
+                    <button class="btn" id="exportBtn" disabled>Export Transcript</button>
+                </div>
+                <div id="transcriptionContent" class="transcription-content"></div>
+            </div>
+            
             <div id="summaryContainer" class="summary-container">
                 <div class="summary-header">
                     <div class="header-with-toggle">
@@ -63,17 +74,6 @@
                         <p>Generating summary...</p>
                     </div>
                 </div>
-            </div>
-
-            <div class="transcription-container" id="transcriptionContainer">
-                <div class="transcription-header">
-                    <div class="header-with-toggle">
-                        <span class="toggle-icon" id="toggleTranscription">▼</span>
-                        <span>Transcription</span>
-                    </div>
-                    <button class="btn" id="exportBtn" disabled>Export Transcript</button>
-                </div>
-                <div id="transcriptionContent" class="transcription-content"></div>
             </div>
 
             <div class="bookmarks-container" id="bookmarksContainer">
