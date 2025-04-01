@@ -25,11 +25,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearBookmarksBtn = document.getElementById('clearBookmarksBtn');
     // Add new export button element
     const exportBookmarksBtn = document.getElementById('exportBookmarksBtn');
+    
+    // Summary
+    const summaryContainer = document.getElementById('summaryContainer');
+    const generateSummaryBtn = document.getElementById('generateSummaryBtn');
+    const summaryText = document.getElementById('summaryText');
+    const noSummaryMessage = document.getElementById('noSummaryMessage');
+    const summaryLoading = document.getElementById('summaryLoading');
 
+    // Chat
     const chatContainer = document.getElementById('chatContainer');
     const chatMessages = document.getElementById('chatMessages');
     const chatInput = document.getElementById('chatInput');
     const sendChatBtn = document.getElementById('sendChatBtn');
+
 
     // Create audio element
     const audioElement = new Audio();
@@ -92,6 +101,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add the transcription toggle functionality
     setupTranscriptionToggle();
+    
+    // Add the summary toggle fucntionality
+    setupSummaryToggle();
+
+    // Generate summary button event
+    generateSummaryBtn.addEventListener('click', generateSummary);
 
     // Audio events
     audioElement.addEventListener('timeupdate', updateProgress);
@@ -173,6 +188,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 segments = [];
                 exportBtn.style.display = 'none';
              
+                summaryContainer.style.display = 'none';
+                summaryText.style.display = 'none';
+                noSummaryMessage.style.display = 'block';
+                generateSummaryBtn.disabled = true;
+                
                 // Hide chat container when new file is uploaded
                 chatContainer.style.display = 'none';
                 chatMessages.innerHTML = '<div class="chat-message system-message">Ask questions about the transcript or request analysis.</div>';
@@ -292,6 +312,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
         // Show export button
         exportBtn.style.display = 'inline-block';
+
+        summaryContainer.style.display = 'block';
+        generateSummaryBtn.disabled = false;
     }
     
     // Add bookmark at current time
@@ -764,6 +787,84 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } 
 
+        function setupSummaryToggle() {
+            const toggleIcon = document.getElementById('toggleSummary');
+            const summaryContent = document.getElementById('summaryContent');
+            
+            if (!toggleIcon || !summaryContent) return;
+            
+            // set up the click handler
+            document.querySelector('.summary-header .header-with-toggle').addEventListener('click', function() {
+                toggleIcon.classList.toggle('collapsed');
+                summaryContent.classList.toggle('collapsed');
+                
+                // save the state to localstorage
+                const isCollapsed = summaryContent.classList.contains('collapsed');
+                localStorage.setItem('summaryCollapsed', isCollapsed);
+            });
+            
+            // initialize based on saved state
+            const savedState = localStorage.getItem('summaryCollapsed');
+            if (savedState === 'true') {
+                toggleIcon.classList.add('collapsed');
+                summaryContent.classList.add('collapsed');
+            }
+        }
+
+        // Add this function to generate the summary
+        function generateSummary() {
+            if (segments.length === 0) {
+                showMessage('Please transcribe the audio first');
+                return;
+            }
+            
+            // Disable button and show loading indicator
+            generateSummaryBtn.disabled = true;
+            noSummaryMessage.style.display = 'none';
+            summaryLoading.style.display = 'block';
+            
+            // Compile all transcript text
+            let transcriptText = '';
+            segments.forEach(segment => {
+                transcriptText += segment.text + ' ';
+            });
+            
+            // Call the backend API
+            fetch(`${API_URL}/generate_summary`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    transcript_text: transcriptText.trim()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                summaryLoading.style.display = 'none';
+                
+                if (data.summary) {
+                    // Display the summary
+                    summaryText.textContent = data.summary;
+                    summaryText.style.display = 'block';
+                    showMessage('Summary generated successfully');
+                } else {
+                    showMessage('Error: ' + data.error);
+                    noSummaryMessage.style.display = 'block';
+                }
+                
+                // Re-enable button
+                generateSummaryBtn.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Error generating summary');
+                summaryLoading.style.display = 'none';
+                noSummaryMessage.style.display = 'block';
+                generateSummaryBtn.disabled = false;
+            });
+        }
 
         function setupChatToggle() {
             const toggleIcon = document.getElementById('toggleChat');

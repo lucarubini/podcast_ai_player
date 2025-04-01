@@ -48,7 +48,26 @@
                 <div class="loading-spinner"></div>
                 <p>Transcribing your audio...</p>
             </div>
-           
+        
+            <div id="summaryContainer" class="summary-container">
+                <div class="summary-header">
+                    <div class="header-with-toggle">
+                        <span class="toggle-icon" id="toggleSummary">▼</span>
+                        <span>Summary</span>
+                    </div>
+                    <button class="btn btn-primary" id="generateSummaryBtn" disabled>Generate Summary</button>
+                </div>
+                <div id="summaryContent" class="summary-content">
+                    <div class="no-summary" id="noSummaryMessage">No summary generated yet</div>
+                    <div id="summaryText" class="summary-text" style="display: none;"></div>
+                    <div id="summaryLoading" class="loading-indicator" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Generating summary...</p>
+                    </div>
+                </div>
+            </div>
+
+
             <div class="transcription-container" id="transcriptionContainer">
                 <div class="transcription-header">
                     <div class="header-with-toggle">
