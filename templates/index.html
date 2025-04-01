@@ -94,6 +94,31 @@
                 </div>
             </div>
 
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-header">
+                    <div class="header-with-toggle">
+                        <span class="toggle-icon" id="toggleChat">▼</span>
+                        <span>Chat with Transcript</span>
+                    </div>
+                </div>
+                    <div id="chatContent" class="chat-content">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="chat-message system-message">
+                                Ask questions about the transcript or request analysis.
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <textarea id="chatInput" class="chat-input" placeholder="Type your message here..." rows="2"></textarea>
+                            <button id="sendChatBtn" class="btn btn-send">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
 
             <div class="message" id="message"></div>
         </div>

@@ -3,17 +3,21 @@ from flask_cors import CORS
 import os
 import whisper
 import json
-import uuid
 import requests
+import uuid
 from dotenv import load_dotenv
 
+# Add after other configurations
 # Load environment variables
 load_dotenv()
 
-# Add these constants below other configurations
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
-AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+# Azure OpenAI configuration
+AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
+AZURE_OPENAI_KEY = os.getenv('AZURE_OPENAI_KEY')
+AZURE_OPENAI_DEPLOYMENT = os.getenv('AZURE_OPENAI_DEPLOYMENT')
+AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2023-05-15')
+
+
 
 # Create Flask app with proper static and template folders
 app = Flask(__name__,
@@ -162,6 +166,58 @@ def generate_summary():
             })
         else:
             return jsonify({'error': f'API Error: {response.text}'}), 500
+
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.json
+    query = data.get('query')
+    transcript_context = data.get('transcript_context', '')
+    chat_history = data.get('chat_history', [])
+
+    if not query:
+        return jsonify({'error': 'No query provided'}), 400
+
+    if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
+        return jsonify({'error': 'Azure OpenAI credentials not configured'}), 500
+
+    try:
+        # Prepare the messages for the API
+        messages = [
+            {"role": "system", "content": f"You are a helpful assistant. Use the following transcript as context for answering questions: {transcript_context}"}
+        ]
+
+        # Add chat history if available
+        for msg in chat_history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+
+        # Add current user query
+        messages.append({"role": "user", "content": query})
+
+        # Call Azure OpenAI API
+        response = requests.post(
+            f"{AZURE_OPENAI_ENDPOINT}/openai/deployments/{AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version={AZURE_OPENAI_API_VERSION}",
+            headers={
+                "Content-Type": "application/json",
+                "api-key": AZURE_OPENAI_KEY
+            },
+            json={
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": 800
+            }
+        )
+
+        if response.status_code == 200:
+            response_data = response.json()
+            assistant_message = response_data['choices'][0]['message']['content']
+
+            return jsonify({
+                'response': assistant_message
+            })
+        else:
+            return jsonify({'error': f'Azure OpenAI API error: {response.text}'}), response.status_code
+
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
