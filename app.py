@@ -167,6 +167,9 @@ def generate_summary():
         else:
             return jsonify({'error': f'API Error: {response.text}'}), 500
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -217,7 +220,6 @@ def chat():
             })
         else:
             return jsonify({'error': f'Azure OpenAI API error: {response.text}'}), response.status_code
-
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
