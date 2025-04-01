@@ -37,10 +37,8 @@
             
             <div class="button-container">
                 <button class="btn btn-success" id="transcribeBtn">Transcribe Audio</button>
-                <button class="btn" id="exportBtn" style="display: none;">Export Transcript</button>
                 <button class="btn" id="importBtn">Import Transcript</button>
                 <button class="btn btn-bookmark" id="bookmarkBtn" disabled>Add Bookmark</button>
-                <button class="btn" id="exportBtn" style="display: none;">Export Transcript</button>
                 <input type="file" id="transcriptFileInput" accept="application/json" style="display: none;" />
             </div>
             
@@ -48,7 +46,18 @@
                 <div class="loading-spinner"></div>
                 <p>Transcribing your audio...</p>
             </div>
-        
+
+            <div class="transcription-container" id="transcriptionContainer">
+                <div class="transcription-header">
+                    <div class="header-with-toggle">
+                        <span class="toggle-icon" id="toggleTranscription">▼</span>
+                        <span>Transcription</span>
+                    </div>
+                    <button class="btn" id="exportBtn" disabled>Export Transcript</button>
+                </div>
+                <div id="transcriptionContent" class="transcription-content"></div>
+            </div>
+            
             <div id="summaryContainer" class="summary-container">
                 <div class="summary-header">
                     <div class="header-with-toggle">
@@ -65,17 +74,6 @@
                         <p>Generating summary...</p>
                     </div>
                 </div>
-            </div>
-
-
-            <div class="transcription-container" id="transcriptionContainer">
-                <div class="transcription-header">
-                    <div class="header-with-toggle">
-                        <span class="toggle-icon" id="toggleTranscription">▼</span>
-                        <span>Transcription</span>
-                    </div>
-                </div>
-                <div id="transcriptionContent" class="transcription-content"></div>
             </div>
 
             <div class="bookmarks-container" id="bookmarksContainer">

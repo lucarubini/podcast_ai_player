@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update UI
                 audioInfo.textContent = file.name;
                 playerContainer.style.display = 'block';
-                    uploadContainer.style.display = 'none'; //make the upload box disappear after file is uploaded
+                uploadContainer.style.display = 'none'; //make the upload box disappear after file is uploaded
                 transcriptionContainer.style.display = 'none';
                 transcriptionContent.innerHTML = '';
                 segments = [];
@@ -197,6 +197,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 chatContainer.style.display = 'none';
                 chatMessages.innerHTML = '<div class="chat-message system-message">Ask questions about the transcript or request analysis.</div>';
                 chatHistory = [];
+                
+                bookmarksContainer.style.display = 'none';
 
                 // Reset player state
                 resetPlayerState();
@@ -256,6 +258,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Show chat container now that transcription is complete
                 chatContainer.style.display = 'block';
+        
+                // Show bookmarks container
+                bookmarksContainer.style.display = 'block';
 
                 // Add welcome message
                 addMessageToChat('system', 'Transcription complete! You can now ask questions about the audio.');
@@ -381,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show/hide no bookmarks message
         if (bookmarks.length === 0) {
             noBookmarksMessage.style.display = 'block';
-            bookmarksContainer.style.display = 'block';
+            //bookmarksContainer.style.display = 'block';
             exportBookmarksBtn.disabled = true;
             return;
         }
@@ -438,7 +443,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Show bookmarks container
-        bookmarksContainer.style.display = 'block';
+        //bookmarksContainer.style.display = 'block';
     }
     
     // Delete a bookmark
@@ -709,7 +714,13 @@ document.addEventListener('DOMContentLoaded', function() {
                    
                     // Enable bookmark button now that transcription is available
                     bookmarkBtn.disabled = false;
-                    
+                   
+                    // Show chat container now that transcription is complete
+                    chatContainer.style.display = 'block';
+        
+                    // Show bookmarks container
+                    bookmarksContainer.style.display = 'block';
+
                     // Show a success message
                     showMessage('Transcript imported successfully');
                     
@@ -770,7 +781,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Set up the click handler
             document.querySelector('.transcription-header .header-with-toggle').addEventListener('click', function() {
-                //toggleIcon.classList.toggle('collapsed');
                 toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
                 transcriptionContent.classList.toggle('collapsed');
                 
@@ -782,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Initialize based on saved state
             const savedState = localStorage.getItem('transcriptionCollapsed');
             if (savedState === 'true') {
-                toggleIcon.classList.add('collapsed');
+                toggleIcon.textContent = '►';
                 transcriptionContent.classList.add('collapsed');
             }
         } 
@@ -795,7 +805,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // set up the click handler
             document.querySelector('.summary-header .header-with-toggle').addEventListener('click', function() {
-                toggleIcon.classList.toggle('collapsed');
+                toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
                 summaryContent.classList.toggle('collapsed');
                 
                 // save the state to localstorage
@@ -806,7 +816,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // initialize based on saved state
             const savedState = localStorage.getItem('summaryCollapsed');
             if (savedState === 'true') {
-                toggleIcon.classList.add('collapsed');
+                toggleIcon.textContent = '►';
                 summaryContent.classList.add('collapsed');
             }
         }
@@ -874,7 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Set up the click handler
             document.querySelector('.chat-header .header-with-toggle').addEventListener('click', function() {
-                toggleIcon.classList.toggle('collapsed');
+                toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
                 chatContent.classList.toggle('collapsed');
                 
                 // Save the state to localStorage
@@ -885,7 +895,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Initialize based on saved state
             const savedState = localStorage.getItem('chatCollapsed');
             if (savedState === 'true') {
-                toggleIcon.classList.add('collapsed');
+                toggleIcon.textContent = '►';
                 chatContent.classList.add('collapsed');
             }
         }
