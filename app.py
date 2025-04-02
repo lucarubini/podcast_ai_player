@@ -19,12 +19,6 @@ AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2023-05-15')
 
 
 
-
-
-
-
-
-
 # Create Flask app with proper static and template folders
 app = Flask(__name__,
             static_folder='static',
@@ -131,6 +125,51 @@ def get_transcription(transcription_id):
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
+# Add this new route for summary generation
+@app.route('/generate_summary', methods=['POST'])
+def generate_summary():
+    data = request.json
+    transcript_text = data.get('transcript_text')
+
+    if not transcript_text:
+        return jsonify({'error': 'No transcript provided'}), 400
+
+    try:
+        # Prepare the prompt for GPT
+        prompt = f"Generate a concise summary of the following transcript:\n\n{transcript_text}\n\nSummary:"
+
+        # Make request to Azure OpenAI
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": AZURE_OPENAI_KEY
+        }
+
+        payload = {
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant that summarizes transcripts."},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 500
+        }
+
+        response = requests.post(
+            f"{AZURE_OPENAI_ENDPOINT}/openai/deployments/{AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=2023-05-15",
+            headers=headers,
+            json=payload
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            summary = result["choices"][0]["message"]["content"].strip()
+            return jsonify({
+                'summary': summary
+            })
+        else:
+            return jsonify({'error': f'API Error: {response.text}'}), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -184,7 +223,6 @@ def chat():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 
 if __name__ == '__main__':
