@@ -293,6 +293,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
                 // Show bookmarks container
                 bookmarksContainer.style.display = 'block';
+        
+                // Show notes container
+                notesContainer.style.display = 'block';
 
                 // Add welcome message
                 addMessageToChat('system', 'Transcription complete! You can now ask questions about the audio.');
@@ -790,6 +793,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
                     // Show bookmarks container
                     bookmarksContainer.style.display = 'block';
+
+                    // Show notes container
+                    notesContainer.style.display = 'block';
 
                     // Show a success message
                     showMessage('Transcript imported successfully');
