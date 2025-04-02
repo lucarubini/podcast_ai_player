@@ -31,6 +31,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatInput = document.getElementById('chatInput');
     const sendChatBtn = document.getElementById('sendChatBtn');
 
+    // Notes
+    const notesContainer = document.getElementById('notesContainer');
+    const notesContent = document.getElementById('notesContent');
+    const noNotesMessage = document.getElementById('noNotesMessage');
+    const addNoteBtn = document.getElementById('addNoteBtn');
+    const clearNotesBtn = document.getElementById('clearNotesBtn');
+    const exportNotesBtn = document.getElementById('exportNotesBtn');
+    const exportNotesJsonlBtn = document.getElementById('exportNotesJsonlBtn');
+    const exportNotesTextBtn = document.getElementById('exportNotesTextBtn');
+    const exportNotesSummaryBtn = document.getElementById('exportNotesSummaryBtn');
+
     // Create audio element
     const audioElement = new Audio();
     let isPlaying = false;
@@ -110,6 +121,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add chat toggle functionality
     setupChatToggle();
+
+
+    // Notes array
+    let notes = [];
+
+    // Add Note button event
+    addNoteBtn.addEventListener('click', addNewNote);
+
+    // Clear notes button event
+    clearNotesBtn.addEventListener('click', clearNotes);
+
+    // Export notes button events
+    exportNotesJsonlBtn.addEventListener('click', () => exportNotes('jsonl'));
+    exportNotesTextBtn.addEventListener('click', () => exportNotes('text'));
+    exportNotesSummaryBtn.addEventListener('click', () => exportNotes('summary'));
+
+    // Add the notes toggle functionality
+    setupNotesToggle();
+
+    // Call the initialization
+    initializeNotesContainer();
+
 
     // Handle file selection
     function handleFileSelect(e) {
@@ -330,7 +363,43 @@ document.addEventListener('DOMContentLoaded', function() {
         
         showMessage('Bookmark added');
     }
-    
+   
+
+    // Function to add a "Copy to Note" button to each bookmark
+    function enhanceBookmarkUI() {
+        // Find all existing bookmark items
+        document.querySelectorAll('.bookmark-item').forEach(bookmarkItem => {
+            const bookmarkActions = bookmarkItem.querySelector('.bookmark-actions');
+            
+            // Check if the copy button already exists
+            if (!bookmarkItem.querySelector('.bookmark-copy-note')) {
+                const copyBtn = document.createElement('span');
+                copyBtn.className = 'bookmark-copy-note';
+                copyBtn.textContent = '📋';
+                copyBtn.title = 'Copy to Notes';
+                copyBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // Get bookmark data
+                    const bookmarkId = bookmarkItem.dataset.id;
+                    const bookmark = bookmarks.find(b => b.id.toString() === bookmarkId);
+                    
+                    if (bookmark) {
+                        // Create a new note from bookmark
+                        const noteText = `Bookmark from [${bookmark.timeFormatted}]:\n${bookmark.text}`;
+                        createNote(`${bookmark.title} (from bookmark)`, noteText);
+                        showMessage('Bookmark copied to notes');
+                    }
+                });
+                
+                // Insert before the delete button
+                const deleteBtn = bookmarkItem.querySelector('.bookmark-delete');
+                bookmarkActions.insertBefore(copyBtn, deleteBtn);
+            }
+        });
+    }
+
+
     // Get relevant transcript text for the given time range
     function getRelevantTranscriptText(startTime, endTime) {
         // Ensure times are within valid range
@@ -416,6 +485,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Show bookmarks container
         bookmarksContainer.style.display = 'block';
+
+        enhanceBookmarkUI();
     }
     
     // Delete a bookmark
@@ -908,6 +979,433 @@ document.addEventListener('DOMContentLoaded', function() {
                 typingEl.remove();
             }
         }
+
+
+    // Function to add a new note
+    function addNewNote() {
+        const title = prompt('Enter a title for your note:', 'Note') || 'Note';
+        createNote(title, '');
+    }
+
+    // Create a new note with title and optional initial content
+    function createNote(title, content = '') {
+        const noteId = Date.now(); // Unique ID for the note
+        
+        // Create note object
+        const note = {
+            id: noteId,
+            title: title,
+            content: content,
+            timestamp: new Date().toISOString()
+        };
+        
+        // Add to notes array
+        notes.push(note);
+        
+        // Display updated notes
+        displayNotes();
+        
+        // If content is empty, immediately put the note in edit mode
+        if (!content) {
+            setTimeout(() => {
+                const noteEl = document.querySelector(`.note-item[data-id="${noteId}"]`);
+                if (noteEl) {
+                    editNote(noteId);
+                }
+            }, 100);
+        }
+        
+        showMessage('Note added');
+    }
+
+    // Display all notes
+    function displayNotes() {
+        // Clear current notes display
+        notesContent.innerHTML = '';
+        
+        // Show/hide no notes message
+        if (notes.length === 0) {
+            noNotesMessage.style.display = 'block';
+            return;
+        }
+        
+        noNotesMessage.style.display = 'none';
+        
+        // Sort notes by timestamp (newest first)
+        notes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Create note elements
+        notes.forEach(note => {
+            const noteEl = document.createElement('div');
+            noteEl.className = 'note-item';
+            noteEl.dataset.id = note.id;
+            
+            const noteHeader = document.createElement('div');
+            noteHeader.className = 'note-header';
+            
+            const titleEl = document.createElement('div');
+            titleEl.className = 'note-title';
+            titleEl.textContent = note.title;
+            
+            const actionsEl = document.createElement('div');
+            actionsEl.className = 'note-actions';
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'note-action-btn note-edit-btn';
+            editBtn.innerHTML = '✏️';
+            editBtn.title = 'Edit note';
+            editBtn.addEventListener('click', () => editNote(note.id));
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'note-action-btn note-delete-btn';
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.title = 'Delete note';
+            deleteBtn.addEventListener('click', () => deleteNote(note.id));
+            
+            actionsEl.appendChild(editBtn);
+            actionsEl.appendChild(deleteBtn);
+            
+            noteHeader.appendChild(titleEl);
+            noteHeader.appendChild(actionsEl);
+            
+            const contentEl = document.createElement('div');
+            contentEl.className = 'note-content';
+            contentEl.textContent = note.content;
+            
+            noteEl.appendChild(noteHeader);
+            noteEl.appendChild(contentEl);
+            notesContent.appendChild(noteEl);
+        });
+        
+        // Show notes container
+        notesContainer.style.display = 'block';
+    }
+
+    // Edit a note
+    function editNote(id) {
+        const noteEl = document.querySelector(`.note-item[data-id="${id}"]`);
+        if (!noteEl) return;
+        
+        const note = notes.find(note => note.id.toString() === id.toString());
+        if (!note) return;
+        
+        // Save the current content element
+        const contentEl = noteEl.querySelector('.note-content');
+        const currentContent = note.content;
+        
+        // Replace content with textarea
+        const textarea = document.createElement('textarea');
+        textarea.className = 'note-textarea';
+        textarea.value = currentContent;
+        contentEl.replaceWith(textarea);
+        
+        // Add save/cancel buttons
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'note-edit-actions';
+        
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn btn-sm btn-success';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', () => {
+            const newContent = textarea.value;
+            saveNoteEdit(id, newContent);
+        });
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-sm';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', () => {
+            // Restore original content
+            const newContentEl = document.createElement('div');
+            newContentEl.className = 'note-content';
+            newContentEl.textContent = currentContent;
+            textarea.replaceWith(newContentEl);
+            noteEl.removeChild(actionsEl);
+        });
+        
+        actionsEl.appendChild(cancelBtn);
+        actionsEl.appendChild(saveBtn);
+        noteEl.appendChild(actionsEl);
+        
+        // Focus textarea
+        textarea.focus();
+    }
+
+    // Save note edit
+    function saveNoteEdit(id, newContent) {
+        // Update note object
+        const note = notes.find(note => note.id.toString() === id.toString());
+        if (note) {
+            note.content = newContent;
+            note.timestamp = new Date().toISOString(); // Update timestamp
+        }
+        
+        // Refresh display
+        displayNotes();
+        showMessage('Note updated');
+    }
+
+    // Delete a note
+    function deleteNote(id) {
+        if (confirm('Are you sure you want to delete this note?')) {
+            // Filter out the note with the given id
+            notes = notes.filter(note => note.id.toString() !== id.toString());
+            
+            // Update display
+            displayNotes();
+            showMessage('Note deleted');
+        }
+    }
+
+    // Clear all notes
+    function clearNotes() {
+        if (notes.length === 0) return;
+        
+        if (confirm('Are you sure you want to delete all notes?')) {
+            notes = [];
+            displayNotes();
+            showMessage('All notes cleared');
+        }
+    }
+
+    // Export notes
+    function exportNotes(format) {
+        if (notes.length === 0) {
+            showMessage('No notes to export');
+            return;
+        }
+        
+        // Get the audio filename (without extension) for use in the export filename
+        const audioName = currentFile ? currentFile.name.replace(/\.[^/.]+$/, "") : "audio";
+        
+        switch (format) {
+            case 'jsonl':
+                exportNotesAsJsonl(audioName);
+                break;
+            case 'text':
+                exportNotesAsText(audioName);
+                break;
+            case 'summary':
+                exportNotesAsSummary(audioName);
+                break;
+        }
+    }
+
+    // Export notes as JSONL
+    function exportNotesAsJsonl(audioName) {
+        // Prepare data for export
+        let jsonlContent = '';
+        
+        // Sort notes by timestamp
+        const sortedNotes = [...notes].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        // Create JSONL content (one JSON object per line)
+        sortedNotes.forEach(note => {
+            // Create export object with relevant fields
+            const exportObj = {
+                title: note.title,
+                content: note.content,
+                timestamp: note.timestamp,
+                audio_file: currentFile ? currentFile.name : null,
+                file_id: fileId
+            };
+            
+            // Add this object as a line in the JSONL file
+            jsonlContent += JSON.stringify(exportObj) + '\n';
+        });
+        
+        // Create Blob and download link
+        downloadFile(jsonlContent, `${audioName}_notes.jsonl`, 'application/x-jsonlines');
+        showMessage('Notes exported as JSONL');
+    }
+
+    // Export notes as plain text
+    function exportNotesAsText(audioName) {
+        // Prepare data for export
+        let textContent = `Notes for: ${currentFile ? currentFile.name : "Unknown audio"}\n`;
+        textContent += `Exported on: ${new Date().toLocaleString()}\n\n`;
+        
+        // Sort notes by timestamp
+        const sortedNotes = [...notes].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        // Add each note to the text content
+        sortedNotes.forEach((note, index) => {
+            textContent += `--- Note ${index + 1}: ${note.title} ---\n`;
+            textContent += `${note.content}\n\n`;
+        });
+        
+        // Create Blob and download link
+        downloadFile(textContent, `${audioName}_notes.txt`, 'text/plain');
+        showMessage('Notes exported as text');
+    }
+
+    // Export notes as a summary (post-processed)
+    function exportNotesAsSummary(audioName) {
+        // Prepare data for export
+        let summaryContent = `# Notes Summary for: ${currentFile ? currentFile.name : "Unknown audio"}\n\n`;
+        
+        // Sort notes by timestamp
+        const sortedNotes = [...notes].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        // Group notes by potential topics or themes (simplified version)
+        // This is a simple example - in a real app, you might use NLP or other techniques
+        const topics = {};
+        
+        // Create a simple topic extraction based on title
+        sortedNotes.forEach(note => {
+            // Get the first word of the title as a simple "topic"
+            const topicMatch = note.title.match(/^(\w+)/);
+            const topic = topicMatch ? topicMatch[1] : 'Misc';
+            
+            if (!topics[topic]) {
+                topics[topic] = [];
+            }
+            
+            topics[topic].push(note);
+        });
+        
+        // Add a table of contents
+        summaryContent += "## Table of Contents\n\n";
+        Object.keys(topics).forEach(topic => {
+            summaryContent += `- [${topic}](#${topic.toLowerCase()})\n`;
+        });
+        summaryContent += "\n";
+        
+        // Add each topic section
+        Object.entries(topics).forEach(([topic, topicNotes]) => {
+            summaryContent += `## ${topic}\n\n`;
+            
+            topicNotes.forEach(note => {
+                summaryContent += `### ${note.title}\n\n`;
+                summaryContent += `${note.content}\n\n`;
+            });
+        });
+        
+        // Create Blob and download link
+        downloadFile(summaryContent, `${audioName}_notes_summary.md`, 'text/markdown');
+        showMessage('Notes exported as summary');
+    }
+
+    // Helper function for file downloads
+    function downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        
+        // Append, click and remove
+        document.body.appendChild(a);
+        a.click();
+        
+        // Clean up
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+    }
+
+    // Function to toggle the notes visibility
+    function setupNotesToggle() {
+        const toggleIcon = document.getElementById('toggleNotes');
+        
+        if (!toggleIcon || !notesContent) return;
+        
+        // Set up the click handler
+        document.querySelector('.notes-header .header-with-toggle').addEventListener('click', function() {
+            toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
+            notesContent.classList.toggle('collapsed');
+            
+            // Save the state to localStorage
+            const isCollapsed = notesContent.classList.contains('collapsed');
+            localStorage.setItem('notesCollapsed', isCollapsed);
+        });
+        
+        // Initialize based on saved state
+        const savedState = localStorage.getItem('notesCollapsed');
+        if (savedState === 'true') {
+            toggleIcon.textContent = '►';
+            notesContent.classList.add('collapsed');
+        }
+    }
+
+
+    // Initialize the notes container on page load
+    function initializeNotesContainer() {
+        // This is called after DOM is loaded
+        // Display empty notes container
+        displayNotes();
+        
+        // Add event to show notes container when a file is loaded
+        // (This can be added in the uploadFile function)
+    }
+
+
+
+    function addMessageToChat(role, content) {
+        // Create message element
+        const messageEl = document.createElement('div');
+        messageEl.className = `chat-message ${role}-message`;
+        
+        // For assistant messages, add a container with save button
+        if (role === 'assistant') {
+            // Create container for message and button
+            const messageContainer = document.createElement('div');
+            messageContainer.className = 'chat-message-container';
+            
+            // Add content
+            const contentEl = document.createElement('div');
+            contentEl.className = 'chat-message-content';
+            contentEl.textContent = content;
+            
+            // Create save button (only for assistant messages)
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'chat-save-note-btn';
+            saveBtn.innerHTML = '📝';
+            saveBtn.title = 'Save to notes';
+            saveBtn.addEventListener('click', function() {
+                saveMessageToNotes(content);
+            });
+            
+            // Append elements
+            messageContainer.appendChild(contentEl);
+            messageContainer.appendChild(saveBtn);
+            messageEl.appendChild(messageContainer);
+        } else {
+            // For user or system messages, just add content directly
+            messageEl.textContent = content;
+        }
+        
+        // Add to chat container
+        chatMessages.appendChild(messageEl);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Add to chat history if it's a user or assistant message
+        if (role === 'user' || role === 'assistant') {
+            chatHistory.push({ role, content });
+        }
+        
+        // Show chat container if it's hidden
+        if (chatContainer.style.display === 'none' || !chatContainer.style.display) {
+            chatContainer.style.display = 'block';
+        }
+    }
+
+    // Function to save a chat message to notes
+    function saveMessageToNotes(content) {
+        // Create a title based on the first few words
+        let titleWords = content.split(' ').slice(0, 4).join(' ');
+        if (titleWords.length < content.length) {
+            titleWords += '...';
+        }
+        const title = `Chat: ${titleWords}`;
+        
+        // Create the note
+        createNote(title, content);
+        showMessage('Chat message saved to notes');
+    }
 
 
     });
