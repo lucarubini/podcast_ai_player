@@ -100,6 +100,30 @@
                     </div>
                 </div>
 
+            <div class="command-container" id="commandContainer">
+                <div class="command-header">
+                    <div class="header-with-toggle">
+                        <span class="toggle-icon" id="toggleCommands">▼</span>
+                        <span>Command Prompt</span>
+                    </div>
+                </div>
+                <div id="commandContent" class="command-content">
+                    <div class="command-input-container">
+                        <textarea id="commandInput" class="command-input" placeholder="Type a command (e.g. 'play', 'pause', 'seek to 2:30')..." rows="1"></textarea>
+                        <button id="executeCommandBtn" class="btn btn-execute">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 12h14"></path>
+                                <path d="m12 5 7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="commandHistory" class="command-history">
+                        <div class="command-item system-command">Type 'help' to see available commands</div>
+                    </div>
+                </div>
+            </div>
+
+
 
             <div class="message" id="message"></div>
         </div>
