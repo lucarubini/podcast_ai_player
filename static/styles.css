@@ -732,3 +732,118 @@ h1 {
 .chat-message-content {
     padding: 10px 12px;
 }
+
+/* Style for command prompt - add to styles.css */
+
+.command-container {
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #f9f9f9;
+}
+
+.command-header {
+    background-color: #e9e9e9;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+}
+
+.header-with-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.toggle-icon {
+    margin-right: 10px;
+    font-weight: bold;
+    transition: transform 0.3s ease;
+}
+
+.command-content {
+    padding: 10px;
+    transition: max-height 0.3s ease;
+}
+
+.command-content.collapsed {
+    max-height: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.command-input-container {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.command-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px;
+    font-family: monospace;
+    resize: none;
+}
+
+.command-input:focus {
+    outline: none;
+    border-color: #6a9de6;
+}
+
+.btn-execute {
+    background-color: #333;
+    color: white;
+    border: none;
+    border-radius: 0 4px 4px 0;
+    padding: 0 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-execute:hover {
+    background-color: #555;
+}
+
+.btn-execute:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+}
+
+.command-history {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #222;
+    color: #f8f8f8;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.command-item {
+    margin-bottom: 6px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.user-command {
+    color: #8ff;
+}
+
+.system-command {
+    color: #ffa;
+}
+
+.command-prefix {
+    color: #8ff;
+    font-weight: bold;
+}
+
