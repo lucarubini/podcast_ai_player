@@ -136,7 +136,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add chat toggle functionality
     setupChatToggle();
 
-
     // Notes array
     let notes = [];
 
@@ -156,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Call the initialization
     initializeNotesContainer();
-
 
     // Handle file selection
     function handleFileSelect(e) {
@@ -293,6 +291,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
                 // Show bookmarks container
                 bookmarksContainer.style.display = 'block';
+        
+                // Show notes container
+                notesContainer.style.display = 'block';
 
                 // Add welcome message
                 addMessageToChat('system', 'Transcription complete! You can now ask questions about the audio.');
@@ -790,6 +791,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
                     // Show bookmarks container
                     bookmarksContainer.style.display = 'block';
+
+                    // Show notes container
+                    notesContainer.style.display = 'block';
 
                     // Show a success message
                     showMessage('Transcript imported successfully');

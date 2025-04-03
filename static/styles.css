@@ -188,13 +188,18 @@ h1 {
     color: #666;
 }
 
-.transcription-header, .bookmarks-header {
+.transcription-header, .bookmarks-header, .chat-header, .summary-header, .notes-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
     font-weight: bold;
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px 4px 0 0;
+    border-bottom: 1px solid var(--border-color);
 }
+
 
 .transcript-segment, .bookmark-item {
     padding: 10px;
@@ -327,31 +332,9 @@ h1 {
     opacity: 0;
 }
 
-.bookmarks-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    font-weight: bold;
-    background-color: #f5f5f5;
-    padding: 10px;
-    border-radius: 4px 4px 0 0;
-    border-bottom: 1px solid var(--border-color);
-}
 
 /* Add these CSS rules to your styles.css file */
 
-.transcription-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    font-weight: bold;
-    background-color: #f5f5f5;
-    padding: 10px;
-    border-radius: 4px 4px 0 0;
-    border-bottom: 1px solid var(--border-color);
-}
 
 .transcription-content {
     transition: max-height 0.3s ease, opacity 0.3s ease;
@@ -374,25 +357,16 @@ h1 {
 
 
 /* Summary container styles */
-.summary-container, .transcription-container, .bookmarks-container {
+.summary-container, .transcription-container, .bookmarks-container, .chat-container, .notes-container {
     margin-top: 20px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow: hidden;
     display: none;
+    background-color: #fff;
 }
 
-.summary-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0;
-    font-weight: bold;
-    background-color: #f5f5f5;
-    padding: 10px;
-    border-radius: 4px 4px 0 0;
-    border-bottom: 1px solid var(--border-color);
-}
+
 
 .summary-content {
     padding: 15px;
@@ -430,25 +404,8 @@ h1 {
     background-color: #8e44ad;
 }
 
-/* Chat container styles */
-.chat-container {
-    margin-top: 20px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    overflow: hidden;
-    background-color: #fff;
-    display: none;
-}
+/* Chat styles */
 
-.chat-header {
-    padding: 10px 15px;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #ddd;
-    font-weight: bold;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
 
 .chat-content {
     display: flex;
@@ -584,23 +541,7 @@ h1 {
 }
 
 /* Notes Container */
-.notes-container {
-    margin-top: 20px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    display: none;
-}
 
-.notes-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #f5f5f5;
-    padding: 10px 15px;
-    border-bottom: 1px solid #ddd;
-}
 
 .notes-content {
     padding: 15px;

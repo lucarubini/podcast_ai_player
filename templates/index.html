@@ -116,37 +116,36 @@
                         </div>
                     </div>
                 </div>
-
-
-            <div class="message" id="message"></div>
         </div>
-    </div>
 
 
-    <div class="notes-container" id="notesContainer">
-    <div class="notes-header">
-        <div class="header-with-toggle">
-            <span class="toggle-icon" id="toggleNotes">▼</span>
-            <span>Notes</span>
-        </div>
-        <div>
-            <button class="btn btn-primary btn-sm" id="addNoteBtn">Add Note</button>
-            <button class="btn btn-danger btn-sm" id="clearNotesBtn">Clear All</button>
-            <div class="export-dropdown">
-                <button class="btn btn-success btn-sm" id="exportNotesBtn">Export</button>
-                <div class="export-dropdown-content">
-                    <button id="exportNotesJsonlBtn">JSONL</button>
-                    <button id="exportNotesTextBtn">Plain Text</button>
-                    <button id="exportNotesSummaryBtn">Summary</button>
+        <div class="notes-container" id="notesContainer">
+            <div class="notes-header">
+                <div class="header-with-toggle">
+                    <span class="toggle-icon" id="toggleNotes">▼</span>
+                    <span>Notes</span>
+                </div>
+                <div>
+                    <button class="btn btn-primary btn-sm" id="addNoteBtn">Add Note</button>
+                    <button class="btn btn-danger btn-sm" id="clearNotesBtn">Clear All</button>
+                </div>
+                <div class="export-dropdown">
+                    <button class="btn btn-success btn-sm" id="exportNotesBtn">Export</button>
+                    <div class="export-dropdown-content">
+                        <button id="exportNotesJsonlBtn">JSONL</button>
+                        <button id="exportNotesTextBtn">Plain Text</button>
+                        <button id="exportNotesSummaryBtn">Summary</button>
+                    </div>
                 </div>
             </div>
+        <div id="notesContent" class="notes-content">
+            <div class="no-notes" id="noNotesMessage">No notes yet</div>
         </div>
-    </div>
-    <div id="notesContent" class="notes-content">
-        <div class="no-notes" id="noNotesMessage">No notes yet</div>
-    </div>
 
-
+        
+        <div class="message" id="message"></div>
+    
+    </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
