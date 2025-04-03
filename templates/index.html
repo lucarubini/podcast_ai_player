@@ -37,10 +37,8 @@
             
             <div class="button-container">
                 <button class="btn btn-success" id="transcribeBtn">Transcribe Audio</button>
-                <button class="btn" id="exportBtn" style="display: none;">Export Transcript</button>
                 <button class="btn" id="importBtn">Import Transcript</button>
                 <button class="btn btn-bookmark" id="bookmarkBtn" disabled>Add Bookmark</button>
-                <button class="btn" id="exportBtn" style="display: none;">Export Transcript</button>
                 <input type="file" id="transcriptFileInput" accept="application/json" style="display: none;" />
             </div>
             
@@ -48,15 +46,34 @@
                 <div class="loading-spinner"></div>
                 <p>Transcribing your audio...</p>
             </div>
-           
+
             <div class="transcription-container" id="transcriptionContainer">
                 <div class="transcription-header">
                     <div class="header-with-toggle">
                         <span class="toggle-icon" id="toggleTranscription">▼</span>
                         <span>Transcription</span>
                     </div>
+                    <button class="btn" id="exportBtn" disabled>Export Transcript</button>
                 </div>
                 <div id="transcriptionContent" class="transcription-content"></div>
+            </div>
+            
+            <div id="summaryContainer" class="summary-container">
+                <div class="summary-header">
+                    <div class="header-with-toggle">
+                        <span class="toggle-icon" id="toggleSummary">▼</span>
+                        <span>Summary</span>
+                    </div>
+                    <button class="btn btn-primary" id="generateSummaryBtn" disabled>Generate Summary</button>
+                </div>
+                <div id="summaryContent" class="summary-content">
+                    <div class="no-summary" id="noSummaryMessage">No summary generated yet</div>
+                    <div id="summaryText" class="summary-text" style="display: none;"></div>
+                    <div id="summaryLoading" class="loading-indicator" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Generating summary...</p>
+                    </div>
+                </div>
             </div>
 
             <div class="bookmarks-container" id="bookmarksContainer">
@@ -124,9 +141,35 @@
             </div>
 
 
-
-            <div class="message" id="message"></div>
         </div>
+
+
+        <div class="notes-container" id="notesContainer">
+            <div class="notes-header">
+                <div class="header-with-toggle">
+                    <span class="toggle-icon" id="toggleNotes">▼</span>
+                    <span>Notes</span>
+                </div>
+                <div>
+                    <button class="btn btn-primary btn-sm" id="addNoteBtn">Add Note</button>
+                    <button class="btn btn-danger btn-sm" id="clearNotesBtn">Clear All</button>
+                </div>
+                <div class="export-dropdown">
+                    <button class="btn btn-success btn-sm" id="exportNotesBtn">Export</button>
+                    <div class="export-dropdown-content">
+                        <button id="exportNotesJsonlBtn">JSONL</button>
+                        <button id="exportNotesTextBtn">Plain Text</button>
+                        <button id="exportNotesSummaryBtn">Summary</button>
+                    </div>
+                </div>
+            </div>
+        <div id="notesContent" class="notes-content">
+            <div class="no-notes" id="noNotesMessage">No notes yet</div>
+        </div>
+
+        
+        <div class="message" id="message"></div>
+    
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
