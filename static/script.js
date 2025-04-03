@@ -136,7 +136,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add chat toggle functionality
     setupChatToggle();
 
-
     // Notes array
     let notes = [];
 
@@ -156,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Call the initialization
     initializeNotesContainer();
-
 
     // Handle file selection
     function handleFileSelect(e) {
