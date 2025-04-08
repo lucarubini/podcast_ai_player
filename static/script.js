@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatMessages = document.getElementById('chatMessages');
     const chatInput = document.getElementById('chatInput');
     const sendChatBtn = document.getElementById('sendChatBtn');
+    const resetChatBtn = document.getElementById('resetChatBtn');
 
     // Text Commands
     const commandContainer = document.getElementById('commandContainer');
@@ -150,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
     audioElement.addEventListener('ended', resetPlayer);
     
     sendChatBtn.addEventListener('click', sendChatMessage);
+    resetChatBtn.addEventListener('click', resetChat);
 
     // Chat input enter key event
     chatInput.addEventListener('keypress', function(e) {
@@ -1919,5 +1921,17 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Chat message saved to notes');
     }
 
+
+    // Function to reset chat history
+    function resetChat() {
+        // Clear the chat history array
+        chatHistory = [];
+        
+        // Clear the chat messages UI (keeping only the initial system message)
+        chatMessages.innerHTML = '<div class="chat-message system-message">Ask questions about the transcript or request analysis.</div>';
+        
+        // Show confirmation message
+        showMessage('Chat history has been reset');
+    }
 
     });
