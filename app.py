@@ -6,8 +6,12 @@ import json
 import requests
 import uuid
 from dotenv import load_dotenv
+# Remove Azure Speech SDK import - we'll use REST API instead
+# import azure.cognitiveservices.speech as speech_sdk
+from pydub import AudioSegment
+import tempfile
+import base64
 
-# Add after other configurations
 # Load environment variables
 load_dotenv()
 
@@ -17,7 +21,9 @@ AZURE_OPENAI_KEY = os.getenv('AZURE_OPENAI_KEY')
 AZURE_OPENAI_DEPLOYMENT = os.getenv('AZURE_OPENAI_DEPLOYMENT')
 AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2023-05-15')
 
-
+# Add Azure Speech Service configuration
+SPEECH_KEY = os.getenv('AZURE_SPEECH_KEY')
+SPEECH_REGION = os.getenv('AZURE_SPEECH_REGION')
 
 # Create Flask app with proper static and template folders
 app = Flask(__name__,
@@ -39,7 +45,6 @@ os.makedirs(TRANSCRIPTION_FOLDER, exist_ok=True)
 
 @app.route('/')
 def index():
-    # Use render_template instead of raw file reading
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
@@ -125,7 +130,6 @@ def get_transcription(transcription_id):
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# Add this new route for summary generation
 @app.route('/generate_summary', methods=['POST'])
 def generate_summary():
     data = request.json
@@ -170,6 +174,98 @@ def generate_summary():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/recognize_speech', methods=['POST'])
+def recognize_speech():
+    """
+    Updated speech recognition using Azure Speech Service REST API instead of SDK
+    """
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file part in the request'}), 400
+
+    audio_file = request.files['audio']
+    language = request.form.get('language', 'en-US')
+
+    if not audio_file:
+        return jsonify({'error': 'No audio file provided'}), 400
+
+    if not SPEECH_KEY or not SPEECH_REGION:
+        return jsonify({'error': 'Azure Speech service not configured. Please set AZURE_SPEECH_KEY and AZURE_SPEECH_REGION environment variables.'}), 500
+
+    # Create temporary files
+    temp_input_audio_path = os.path.join(tempfile.gettempdir(), f"input_audio_{uuid.uuid4()}.webm")
+    temp_output_wav_path = os.path.join(tempfile.gettempdir(), f"converted_audio_{uuid.uuid4()}.wav")
+
+    try:
+        # Save the uploaded audio file
+        audio_file.save(temp_input_audio_path)
+
+        # Convert audio to WAV format (16kHz, 16-bit, mono)
+        audio = AudioSegment.from_file(temp_input_audio_path)
+        audio = audio.set_frame_rate(16000)
+        audio = audio.set_channels(1)
+        audio = audio.set_sample_width(2)
+        audio.export(temp_output_wav_path, format="wav")
+
+        # Read the converted WAV file
+        with open(temp_output_wav_path, 'rb') as wav_file:
+            audio_data = wav_file.read()
+
+        # Azure Speech Service REST API endpoint
+        endpoint = f"https://{SPEECH_REGION}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1"
+
+        # Set up headers
+        headers = {
+            'Ocp-Apim-Subscription-Key': SPEECH_KEY,
+            'Content-Type': 'audio/wav; codecs=audio/pcm; samplerate=16000',
+            'Accept': 'application/json'
+        }
+
+        # Set up parameters
+        params = {
+            'language': language,
+            'format': 'detailed'
+        }
+
+        # Make the REST API call
+        response = requests.post(
+            endpoint,
+            headers=headers,
+            params=params,
+            data=audio_data,
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+
+            # Extract transcript from response
+            transcript = ""
+            if 'NBest' in result and len(result['NBest']) > 0:
+                transcript = result['NBest'][0]['Display']
+            elif 'DisplayText' in result:
+                transcript = result['DisplayText']
+            else:
+                transcript = "No speech could be recognized."
+
+            return jsonify({'transcript': transcript})
+
+        else:
+            error_message = f"Speech recognition failed with status {response.status_code}"
+            if response.text:
+                error_message += f": {response.text}"
+
+            return jsonify({'error': error_message}), 500
+
+    except Exception as e:
+        print(f"Azure Speech Recognition Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        # Clean up temporary files
+        if os.path.exists(temp_input_audio_path):
+            os.remove(temp_input_audio_path)
+        if os.path.exists(temp_output_wav_path):
+            os.remove(temp_output_wav_path)
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -292,12 +388,17 @@ def interpret_command():
         if not response:
             return jsonify({'error': 'Could not interpret command', 'action': 'unknown'}), 200
 
-        # Return the structured command
+        # ADD THIS: Set execute flag to true for automatic execution
+        response['execute'] = True
+        response['message'] = f"Executing: {response.get('intent', 'Unknown command')}"
+
+        # Return the structured command with execute flag
         return jsonify(response), 200
 
     except Exception as e:
         print(f"Error in command interpretation: {str(e)}")
         return jsonify({'error': 'Error processing command', 'action': 'unknown'}), 200
+
 
 def call_azure_openai(system_prompt, user_prompt):
     """Call Azure OpenAI to interpret the command."""
@@ -417,7 +518,6 @@ def fallback_interpretation(user_prompt):
         'action': 'unknown',
         'parameters': {}
     }
-
 
 if __name__ == '__main__':
     print("Starting server at http://localhost:5000")
