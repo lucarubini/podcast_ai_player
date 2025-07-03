@@ -58,6 +58,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const exportNotesTextBtn = document.getElementById('exportNotesTextBtn');
     const exportNotesSummaryBtn = document.getElementById('exportNotesSummaryBtn');
 
+
+    // PTT
+    const pttButton = document.getElementById('pttButton');
+    const languageSelect = document.getElementById('languageSelect');
+    const pttTranscriptDisplay = document.getElementById('pttTranscriptDisplay');
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    let recognitionTimeout;
+
     // Create audio element
     const audioElement = new Audio();
     let isPlaying = false;
@@ -123,6 +134,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Import transcript
     importBtn.addEventListener('click', () => transcriptFileInput.click());
     transcriptFileInput.addEventListener('change', importTranscript);
+
+    // PTT
+    pttButton.addEventListener('mousedown', startPtt);
+    pttButton.addEventListener('mouseup', stopPtt);
+    pttButton.addEventListener('mouseleave', (e) => { // Stop recording if mouse leaves button while pressed
+        if (isRecording) {
+            stopPtt(e);
+        }
+    });
 
     // Bookmark button event
     bookmarkBtn.addEventListener('click', addBookmark);
@@ -1933,5 +1953,122 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show confirmation message
         showMessage('Chat history has been reset');
     }
+
+
+
+    // Function to start Push-to-Talk recording
+    async function startPtt() {
+         if (isRecording) return; // Prevent multiple recordings
+
+         isRecording = true;
+         pttButton.classList.add('recording');
+         pttTranscriptDisplay.textContent = 'Listening...'; // Clear previous transcript
+         showMessage('Recording started. Release button to stop.');
+
+         // Pause the audio player
+         if (isPlaying) {
+             audioElement.pause();
+             playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+             isPlaying = false;
+         }
+
+         try {
+             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+             mediaRecorder = new MediaRecorder(stream);
+             audioChunks = [];
+
+             mediaRecorder.ondataavailable = event => {
+                 audioChunks.push(event.data);
+             };
+
+             mediaRecorder.onstop = async () => {
+                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                 // const audioUrl = URL.createObjectURL(audioBlob); // For debugging
+                 // console.log('Recorded audio URL:', audioUrl); // For debugging
+                 
+                 pttButton.classList.remove('recording');
+                 pttTranscriptDisplay.textContent = 'Processing...';
+
+                 // Send to backend for Azure Speech Recognition
+                 await sendAudioForRecognition(audioBlob);
+                 
+                 // Stop all tracks on the stream to release microphone
+                 stream.getTracks().forEach(track => track.stop());
+             };
+
+             mediaRecorder.start();
+         } catch (error) {
+             console.error('Error accessing microphone:', error);
+             showMessage('Error accessing microphone. Please allow microphone access.');
+             pttButton.classList.remove('recording');
+             isRecording = false;
+             pttTranscriptDisplay.textContent = 'Microphone access denied or error.';
+         }
+     }
+
+     // Function to stop Push-to-Talk recording
+     function stopPtt() {
+         if (!isRecording) return;
+
+         isRecording = false;
+         clearTimeout(recognitionTimeout); // Clear any pending recognition timeouts
+         pttButton.classList.remove('recording');
+         showMessage('Recording stopped. Processing transcription...');
+
+         if (mediaRecorder && mediaRecorder.state === 'recording') {
+             mediaRecorder.stop();
+         }
+         // Resume audio after 1.5 seconds if it was playing before dictation
+         setTimeout(() => {
+             if (!isPlaying && audioElement.src && !audioElement.paused) {
+                  audioElement.play();
+                  playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+                  isPlaying = true;
+             }
+         }, 1500);
+     }
+
+     // Function to send audio blob to backend for speech recognition
+     async function sendAudioForRecognition(audioBlob) {
+         const formData = new FormData();
+         formData.append('audio', audioBlob, 'audio.webm');
+         formData.append('language', languageSelect.value); // Send selected language
+
+         try {
+             const response = await fetch(`${API_URL}/recognize_speech`, {
+                 method: 'POST',
+                 body: formData
+             });
+
+             const data = await response.json();
+
+             if (data.transcript) {
+                 pttTranscriptDisplay.textContent = data.transcript;
+                 showMessage('Transcription received!');
+                 // Optionally, add the transcript to the command input directly
+                 commandInput.value = data.transcript;
+             } else {
+                 pttTranscriptDisplay.textContent = 'No transcript or error.';
+                 showMessage('Error: ' + (data.error || 'Unknown transcription error.'));
+             }
+         } catch (error) {
+             console.error('Error sending audio for recognition:', error);
+             pttTranscriptDisplay.textContent = 'Error communicating with speech service.';
+             showMessage('Network error or speech service issue.');
+         }
+     }
+
+     // This is a placeholder for future wake-up word integration.
+     // The structure for startPtt and stopPtt allows for easy replacement
+     // of button events with wake-up word detection events.
+     function setupWakeWordDetection() {
+         // In a real scenario, this would involve a library or service
+         // that listens for a wake-up word and triggers startPtt()
+         // when detected, and potentially stopPtt() after a period of silence.
+         console.log("Wake-up word detection not implemented yet. Using PTT.");
+     }
+     // Call this if you were to enable wake word detection
+     // setupWakeWordDetection();
+
 
     });

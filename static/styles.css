@@ -841,3 +841,85 @@ h1 {
     font-weight: bold;
 }
 
+/* Styles for PTT Button */
+#pttButton {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 10px; /* Space from execute button */
+    transition: background-color 0.3s ease, transform 0.1s ease;
+}
+
+#pttButton:hover {
+    background-color: #2980b9;
+}
+
+#pttButton:active {
+    transform: scale(0.98);
+}
+
+#pttButton.recording {
+    background-color: var(--danger-color); /* Red when recording */
+    animation: pulse 1s infinite alternate;
+}
+
+#pttButton svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Styles for Language Select */
+.language-select {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-left: 10px;
+    font-size: 14px;
+    background-color: white;
+    cursor: pointer;
+    appearance: none; /* Remove default dropdown arrow */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
+    padding-right: 25px; /* Make space for custom arrow */
+}
+
+.language-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Styles for PTT Transcript Display */
+.ptt-transcript-display {
+    min-height: 40px;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 16px;
+    color: #495057;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Keyframe for pulse animation */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+    }
+}
+

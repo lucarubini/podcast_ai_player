@@ -70,17 +70,31 @@
             </div>
             <div id="commandContent" class="command-content">
                 <div class="command-input-container">
-                    <textarea id="commandInput" class="command-input" placeholder="Type a command (e.g. 'play', 'pause', 'seek to 2:30')..." rows="1"></textarea>
-                    <button id="executeCommandBtn" class="btn btn-execute">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"></path>
-                            <path d="m12 5 7 7-7 7"></path>
+                    <textarea id="commandInput" class="command-input" placeholder="Type a command or use PTT..."></textarea>
+                    <button class="btn-execute" id="executeCommandBtn" title="Execute Command">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>
                     </button>
-                </div>
-                <div id="commandHistory" class="command-history">
-                    <div class="command-item system-command">Type 'help' to see available commands</div>
-                </div>
+                    <button id="pttButton" class="btn btn-primary" title="Push to Talk">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" y1="19" x2="12" y2="23"></line>
+                            <line x1="8" y1="23" x2="16" y2="23"></line>
+                        </svg>
+                    </button>
+                    <select id="languageSelect" class="language-select" title="Select Language">
+                        <option value="en-US">English (US)</option>
+                        <option value="es-ES">Spanish (Spain)</option>
+                        <option value="fr-FR">French (France)</option>
+                        <option value="de-DE">German (Germany)</option>
+                        <option value="it-IT">Italian (Italy)</option>
+                    </select>
+                    </div>
+                <div id="pttTranscriptDisplay" class="ptt-transcript-display"></div>
+                <div class="command-history" id="commandHistory">
+                    </div>
             </div>
         </div>
 
