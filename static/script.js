@@ -63,7 +63,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const pttButton = document.getElementById('pttButton');
     const languageSelect = document.getElementById('languageSelect');
     const pttTranscriptDisplay = document.getElementById('pttTranscriptDisplay');
-
+    
+    let wasPlayingBeforePTT = false;
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
@@ -1966,11 +1967,13 @@ document.addEventListener('DOMContentLoaded', function() {
          showMessage('Recording started. Release button to stop.');
 
          // Pause the audio player
+         // Track if audio was playing before PTT and pause it
+         wasPlayingBeforePTT = isPlaying;
          if (isPlaying) {
-             audioElement.pause();
-             playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-             isPlaying = false;
-         }
+            audioElement.pause();
+            playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+            isPlaying = false;
+            }
 
          try {
              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -2018,14 +2021,16 @@ document.addEventListener('DOMContentLoaded', function() {
          if (mediaRecorder && mediaRecorder.state === 'recording') {
              mediaRecorder.stop();
          }
-         // Resume audio after 1.5 seconds if it was playing before dictation
+         // Resume audio after 1.5 seconds only if it was playing before PTT
          setTimeout(() => {
-             if (!isPlaying && audioElement.src && !audioElement.paused) {
-                  audioElement.play();
-                  playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
-                  isPlaying = true;
-             }
-         }, 1500);
+            if (wasPlayingBeforePTT && audioElement.src) {
+                audioElement.play();
+                playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+                isPlaying = true;
+            }
+            // Reset the flag
+            wasPlayingBeforePTT = false;
+         }, 900);
      }
 
      // Function to send audio blob to backend for speech recognition
@@ -2047,6 +2052,8 @@ document.addEventListener('DOMContentLoaded', function() {
                  showMessage('Transcription received!');
                  // Optionally, add the transcript to the command input directly
                  commandInput.value = data.transcript;
+
+
              } else {
                  pttTranscriptDisplay.textContent = 'No transcript or error.';
                  showMessage('Error: ' + (data.error || 'Unknown transcription error.'));
