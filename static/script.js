@@ -2053,6 +2053,8 @@ document.addEventListener('DOMContentLoaded', function() {
                  // Optionally, add the transcript to the command input directly
                  commandInput.value = data.transcript;
 
+                 // Auto-execute the command
+                 executeCommandFromTranscript(data.transcript);
 
              } else {
                  pttTranscriptDisplay.textContent = 'No transcript or error.';
@@ -2064,6 +2066,77 @@ document.addEventListener('DOMContentLoaded', function() {
              showMessage('Network error or speech service issue.');
          }
      }
+
+    
+     // New function to execute command from transcript
+     function executeCommandFromTranscript(transcript) {
+        if (isExecutingCommand) return;
+        
+        const command = transcript.trim();
+        if (!command) return;
+        
+        // Add command to history UI
+        addToCommandHistory('user', command);
+        
+        // Set executing state
+        isExecutingCommand = true;
+        executeCommandBtn.disabled = true;
+        
+        // Show processing indicator
+        addToCommandHistory('system', 'Processing voice command...');
+        
+        // Get current application state for context
+        const appState = {
+            isAudioLoaded: !!audioElement.src,
+            isPlaying: isPlaying,
+            currentTime: audioElement.currentTime,
+            duration: audioElement.duration,
+            hasTranscript: segments.length > 0,
+            bookmarksCount: bookmarks.length,
+            fileName: currentFile ? currentFile.name : null,
+            fileId: fileId
+        };
+        
+        // Make API request to interpret command
+        fetch(`${API_URL}/interpret_command`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                command: command,
+                app_state: appState,
+                command_history: commands.slice(-5) // Send last 5 commands for context
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                addToCommandHistory('system', `Error: ${data.error}`);
+                return;
+            }
+            
+            // Show detected intent in history
+            addToCommandHistory('system', `Voice command detected: ${data.intent}`);
+            
+            // Execute the command based on the interpreted action
+            executeAction(data.action, data.parameters);
+            
+            // Clear the command input after execution
+            setTimeout(() => {
+                commandInput.value = '';
+            }, 2000); // Clear after 2 seconds for visual feedback
+        })
+        .catch(error => {
+            console.error('Command interpretation error:', error);
+            addToCommandHistory('system', 'Error interpreting voice command. Please try again.');
+        })
+        .finally(() => {
+            // Reset executing state
+            isExecutingCommand = false;
+            executeCommandBtn.disabled = false;
+        });
+    }
 
      // This is a placeholder for future wake-up word integration.
      // The structure for startPtt and stopPtt allows for easy replacement
