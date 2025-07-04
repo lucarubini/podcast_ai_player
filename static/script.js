@@ -415,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const bookmarkId = Date.now(); // Unique ID for the bookmark
 
         // Prompt for bookmark title
-        const bookmarkTitle = prompt('Enter a title for this bookmark:', 'Bookmark') || 'Bookmark';
+        //const bookmarkTitle = prompt('Enter a title for this bookmark:', 'Bookmark') || 'Bookmark';
 
         // Find relevant transcript segments (5 seconds before, 2 seconds after)
         const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
@@ -426,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
             time: currentTime,
             text: relevantText,
             timeFormatted: formatTime(currentTime),
-            title: bookmarkTitle
+            title: 'bookmark'
         };
         
         // Add to bookmarks array
@@ -1295,7 +1295,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Use provided title or generate one
-                    const bookmarkTitle = parameters.title || 'Bookmark';
+                    const bookmarkTitle = 'bookmark';
                     
                     // Get current position
                     const currentTime = audioElement.currentTime;
@@ -1317,7 +1317,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     displayBookmarks();
                     exportBookmarksBtn.disabled = bookmarks.length === 0;
                     
-                    addToCommandHistory('system', `Added bookmark: "${bookmarkTitle}" at ${formatTime(currentTime)}`);
+                    addToCommandHistory('system', `Added bookmark at ${formatTime(currentTime)}`);
                     break;
                     
                 case 'transcribe':
