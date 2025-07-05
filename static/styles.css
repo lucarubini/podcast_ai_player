@@ -923,3 +923,122 @@ h1 {
     }
 }
 
+
+/* Bookmark comments styles - ADD THESE TO YOUR EXISTING CSS */
+
+.bookmark-comments {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #666;
+    border-left: 3px solid #007bff;
+}
+
+.bookmark-comments:empty {
+    display: none;
+}
+
+.bookmark-comments-textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.9em;
+    resize: vertical;
+}
+
+.bookmark-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-end;
+}
+
+.bookmark-edit-actions .btn {
+    padding: 4px 12px;
+    font-size: 0.8em;
+}
+
+.bookmark-action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.bookmark-edit-comments,
+.bookmark-generate-comments,
+.bookmark-copy-note,
+.bookmark-delete {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.bookmark-edit-comments:hover,
+.bookmark-generate-comments:hover,
+.bookmark-copy-note:hover {
+    background-color: #f0f0f0;
+}
+
+.bookmark-generate-comments {
+    color: #007bff;
+}
+
+.bookmark-generate-comments:hover {
+    background-color: #e3f2fd;
+}
+
+.bookmark-edit-comments {
+    color: #28a745;
+}
+
+.bookmark-edit-comments:hover {
+    background-color: #f0f8f0;
+}
+
+.bookmark-copy-note {
+    color: #6c757d;
+}
+
+.bookmark-copy-note:hover {
+    background-color: #f8f9fa;
+}
+
+.bookmark-delete {
+    color: #dc3545;
+    font-size: 1.2em;
+}
+
+.bookmark-delete:hover {
+    background-color: #f8d7da;
+}
+
+/* Update bookmark actions layout */
+.bookmark-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.bookmark-title {
+    font-weight: bold;
+    color: #333;
+}
+
+.bookmark-time {
+    color: #007bff;
+    cursor: pointer;
+    font-family: monospace;
+}
+
+.bookmark-time:hover {
+    text-decoration: underline;
+}
+

@@ -519,6 +519,59 @@ def fallback_interpretation(user_prompt):
         'parameters': {}
     }
 
+
+
+@app.route('/generate_bookmark_comment', methods=['POST'])
+def generate_bookmark_comment():
+    data = request.json
+    transcript_text = data.get('transcript_text')
+
+    if not transcript_text:
+        return jsonify({'error': 'No transcript provided'}), 400
+
+    try:
+        # Prepare a specific prompt for bookmark comments
+        prompt = f"""Generate a brief, insightful comment about this audio transcript segment.
+        Focus on key points, themes, or important information.
+        Keep it concise (1-2 sentences max):
+
+        "{transcript_text}"
+
+        Comment:"""
+
+        # Make request to Azure OpenAI
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": AZURE_OPENAI_KEY
+        }
+
+        payload = {
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant that creates brief, insightful comments about audio transcript segments."},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 150  # Shorter for comments
+        }
+
+        response = requests.post(
+            f"{AZURE_OPENAI_ENDPOINT}/openai/deployments/{AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=2023-05-15",
+            headers=headers,
+            json=payload
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            comment = result["choices"][0]["message"]["content"].strip()
+            return jsonify({
+                'comment': comment
+            })
+        else:
+            return jsonify({'error': f'API Error: {response.text}'}), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("Starting server at http://localhost:5000")
     app.run(debug=True, port=5000)

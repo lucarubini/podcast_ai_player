@@ -405,39 +405,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Add bookmark at current time
+    //
+    //
+    //
+    // Add bookmark at current time - MODIFIED
     function addBookmark() {
         if (!audioElement.src || segments.length === 0) {
             showMessage('Please upload and transcribe audio first');
             return;
         }
-        
+
         const currentTime = audioElement.currentTime;
         const bookmarkId = Date.now(); // Unique ID for the bookmark
 
-        // Prompt for bookmark title
-        //const bookmarkTitle = prompt('Enter a title for this bookmark:', 'Bookmark') || 'Bookmark';
-
         // Find relevant transcript segments (5 seconds before, 2 seconds after)
         const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
-        
-        // Create bookmark object
+
+        // Create bookmark object - ADDED comments field
         const bookmark = {
             id: bookmarkId,
             time: currentTime,
             text: relevantText,
             timeFormatted: formatTime(currentTime),
-            title: 'bookmark'
+            title: 'bookmark',
+            comments: '' // NEW: Empty comments field
         };
-        
+
         // Add to bookmarks array
         bookmarks.push(bookmark);
-        
+
         // Display bookmark
         displayBookmarks();
-        
+
         // Enable export button if we have bookmarks
         exportBookmarksBtn.disabled = bookmarks.length === 0;
-        
+
         showMessage('Bookmark added');
     }
    
@@ -496,7 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return relevantText.trim() || 'No transcript available for this timestamp';
     }
     
-    // Display all bookmarks
+    // Display all bookmarks - MODIFIED
     function displayBookmarks() {
         // Clear current bookmarks display
         bookmarksContent.innerHTML = '';
@@ -504,7 +506,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show/hide no bookmarks message
         if (bookmarks.length === 0) {
             noBookmarksMessage.style.display = 'block';
-            //bookmarksContainer.style.display = 'block';
             exportBookmarksBtn.disabled = true;
             return;
         }
@@ -539,33 +540,180 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
+            // NEW: Action buttons container
+            const actionButtons = document.createElement('div');
+            actionButtons.className = 'bookmark-action-buttons';
+            
+            // NEW: Edit comments button
+            const editCommentsBtn = document.createElement('span');
+            editCommentsBtn.className = 'bookmark-edit-comments';
+            editCommentsBtn.textContent = '✏️';
+            editCommentsBtn.title = 'Edit comments';
+            editCommentsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                editBookmarkComments(bookmark.id);
+            });
+            
+            // NEW: Generate comments button
+            const generateCommentsBtn = document.createElement('span');
+            generateCommentsBtn.className = 'bookmark-generate-comments';
+            generateCommentsBtn.textContent = '🤖';
+            generateCommentsBtn.title = 'Generate AI comments';
+            generateCommentsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                generateBookmarkComments(bookmark.id);
+            });
+            
+            // Copy to note button (existing)
+            const copyBtn = document.createElement('span');
+            copyBtn.className = 'bookmark-copy-note';
+            copyBtn.textContent = '📋';
+            copyBtn.title = 'Copy to Notes';
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                copyBookmarkToNote(bookmark.id);
+            });
+            
             const deleteBtn = document.createElement('span');
             deleteBtn.className = 'bookmark-delete';
-            deleteBtn.innerHTML = '&times;'; // × symbol
+            deleteBtn.innerHTML = '&times;';
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 deleteBookmark(bookmark.id);
             });
             
+            actionButtons.appendChild(editCommentsBtn);
+            actionButtons.appendChild(generateCommentsBtn);
+            actionButtons.appendChild(copyBtn);
+            actionButtons.appendChild(deleteBtn);
+            
             bookmarkHeader.appendChild(titleEl);
             bookmarkHeader.appendChild(timeEl);
-            bookmarkHeader.appendChild(deleteBtn);
+            bookmarkHeader.appendChild(actionButtons);
             
             const textEl = document.createElement('div');
             textEl.className = 'bookmark-text';
             textEl.textContent = bookmark.text;
             
+            // NEW: Comments section
+            const commentsEl = document.createElement('div');
+            commentsEl.className = 'bookmark-comments';
+            if (bookmark.comments) {
+                commentsEl.innerHTML = `<strong>Comments:</strong> ${bookmark.comments}`;
+            }
+            
             bookmarkEl.appendChild(bookmarkHeader);
             bookmarkEl.appendChild(textEl);
+            bookmarkEl.appendChild(commentsEl);
             bookmarksContent.appendChild(bookmarkEl);
         });
-        
-        // Show bookmarks container
-        //bookmarksContainer.style.display = 'block';
-
-        enhanceBookmarkUI();
     }
-    
+
+
+    // NEW: Edit bookmark comments function
+    function editBookmarkComments(id) {
+        const bookmark = bookmarks.find(b => b.id === id);
+        if (!bookmark) return;
+        
+        const bookmarkEl = document.querySelector(`.bookmark-item[data-id="${id}"]`);
+        const commentsEl = bookmarkEl.querySelector('.bookmark-comments');
+        
+        // Create textarea for editing
+        const textarea = document.createElement('textarea');
+        textarea.className = 'bookmark-comments-textarea';
+        textarea.value = bookmark.comments || '';
+        textarea.placeholder = 'Add your comments here...';
+        
+        // Create save/cancel buttons
+        const editActions = document.createElement('div');
+        editActions.className = 'bookmark-edit-actions';
+        
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn btn-sm btn-success';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', () => {
+            bookmark.comments = textarea.value;
+            displayBookmarks();
+            showMessage('Comments updated');
+        });
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-sm';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', () => {
+            displayBookmarks();
+        });
+        
+        editActions.appendChild(cancelBtn);
+        editActions.appendChild(saveBtn);
+        
+        // Replace comments section with edit interface
+        commentsEl.innerHTML = '';
+        commentsEl.appendChild(textarea);
+        commentsEl.appendChild(editActions);
+        
+        textarea.focus();
+    }
+
+    // NEW: Generate AI comments for bookmark
+    function generateBookmarkComments(id) {
+        const bookmark = bookmarks.find(b => b.id === id);
+        if (!bookmark) return;
+        
+        const bookmarkEl = document.querySelector(`.bookmark-item[data-id="${id}"]`);
+        const commentsEl = bookmarkEl.querySelector('.bookmark-comments');
+        
+        // Show loading indicator
+        commentsEl.innerHTML = '<div class="loading-indicator"><div class="loading-spinner"></div><p>Generating comments...</p></div>';
+        
+        // Prepare prompt for GPT
+        const prompt = `Generate a brief, insightful comment about this audio transcript segment. Focus on key points, themes, or important information. Keep it concise (1-2 sentences):\n\n"${bookmark.text}"`;
+        
+        // Make API call
+        fetch(`${API_URL}/generate_summary`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                transcript_text: prompt
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.summary) {
+                // Update bookmark with generated comments
+                bookmark.comments = data.summary;
+                displayBookmarks();
+                showMessage('AI comments generated');
+            } else {
+                showMessage('Error generating comments: ' + data.error);
+                displayBookmarks();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error generating comments');
+            displayBookmarks();
+        });
+    }
+
+    // NEW: Copy bookmark to note (modified to include comments)
+    function copyBookmarkToNote(id) {
+        const bookmark = bookmarks.find(b => b.id === id);
+        if (!bookmark) return;
+        
+        // Create note text with comments if available
+        let noteText = `Bookmark from [${bookmark.timeFormatted}]:\n${bookmark.text}`;
+        if (bookmark.comments) {
+            noteText += `\n\nComments: ${bookmark.comments}`;
+        }
+        
+        createNote(`${bookmark.title} (from bookmark)`, noteText);
+        showMessage('Bookmark copied to notes');
+    }
+
+
     // Delete a bookmark
     function deleteBookmark(id) {
         // Filter out the bookmark with the given id
@@ -586,8 +734,10 @@ document.addEventListener('DOMContentLoaded', function() {
         displayBookmarks();
         exportBookmarksBtn.disabled = true;
     }
-    
-    // Export bookmarks as JSONL
+   
+
+
+    // Export bookmarks as JSONL - MODIFIED to include comments
     function exportBookmarks() {
         if (bookmarks.length === 0) {
             showMessage('No bookmarks to export');
@@ -605,12 +755,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Create JSONL content (one JSON object per line)
         sortedBookmarks.forEach(bookmark => {
-            // Create export object with relevant fields
+            // Create export object with relevant fields - ADDED comments
             const exportObj = {
                 timestamp: bookmark.time,
                 timestamp_formatted: formatTime(bookmark.time),
                 text: bookmark.text,
                 title: bookmark.title,
+                comments: bookmark.comments || '', // NEW: Include comments
                 audio_file: currentFile ? currentFile.name : null,
                 file_id: fileId
             };
@@ -637,6 +788,10 @@ document.addEventListener('DOMContentLoaded', function() {
             showMessage('Bookmarks exported successfully');
         }, 100);
     }
+
+
+
+
     
     // Highlight active transcription segment
     function highlightCurrentSegment() {
