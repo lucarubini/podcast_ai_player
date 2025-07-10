@@ -1,8 +1,15 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // DOM Elements
+    // ========================================================================
+    // DOM ELEMENT REFERENCES
+    // ========================================================================
+    
+    // Upload and File Handling Elements
     const uploadContainer = document.getElementById('uploadContainer');
     const fileInput = document.getElementById('fileInput');
     const uploadBtn = document.getElementById('uploadBtn');
+    const transcriptFileInput = document.getElementById('transcriptFileInput');
+    
+    // Audio Player Elements
     const playerContainer = document.getElementById('playerContainer');
     const audioInfo = document.getElementById('audioInfo');
     const playPauseBtn = document.getElementById('playPauseBtn');
@@ -10,44 +17,45 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalTimeEl = document.getElementById('totalTime');
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
-    const messageEl = document.getElementById('message');
+    
+    // Transcription Elements
     const transcribeBtn = document.getElementById('transcribeBtn');
     const transcriptionContainer = document.getElementById('transcriptionContainer');
     const transcriptionContent = document.getElementById('transcriptionContent');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
-    const transcriptFileInput = document.getElementById('transcriptFileInput');
+    
+    // Bookmark Elements
     const bookmarkBtn = document.getElementById('bookmarkBtn');
     const bookmarksContainer = document.getElementById('bookmarksContainer');
     const bookmarksContent = document.getElementById('bookmarksContent');
     const noBookmarksMessage = document.getElementById('noBookmarksMessage');
     const clearBookmarksBtn = document.getElementById('clearBookmarksBtn');
-    // Add new export button element
     const exportBookmarksBtn = document.getElementById('exportBookmarksBtn');
     
-    // Summary
+    // Summary Elements
     const summaryContainer = document.getElementById('summaryContainer');
     const generateSummaryBtn = document.getElementById('generateSummaryBtn');
     const summaryText = document.getElementById('summaryText');
     const noSummaryMessage = document.getElementById('noSummaryMessage');
     const summaryLoading = document.getElementById('summaryLoading');
-
-    // Chat
+    
+    // Chat Elements
     const chatContainer = document.getElementById('chatContainer');
     const chatMessages = document.getElementById('chatMessages');
     const chatInput = document.getElementById('chatInput');
     const sendChatBtn = document.getElementById('sendChatBtn');
     const resetChatBtn = document.getElementById('resetChatBtn');
-
-    // Text Commands
+    
+    // Command Elements
     const commandContainer = document.getElementById('commandContainer');
     const commandInput = document.getElementById('commandInput');
     const executeCommandBtn = document.getElementById('executeCommandBtn');
     const commandHistory = document.getElementById('commandHistory');
     const commandToggleIcon = document.getElementById('toggleCommands');
     
-    // Notes
+    // Notes Elements
     const notesContainer = document.getElementById('notesContainer');
     const notesContent = document.getElementById('notesContent');
     const noNotesMessage = document.getElementById('noNotesMessage');
@@ -57,51 +65,96 @@ document.addEventListener('DOMContentLoaded', function() {
     const exportNotesJsonlBtn = document.getElementById('exportNotesJsonlBtn');
     const exportNotesTextBtn = document.getElementById('exportNotesTextBtn');
     const exportNotesSummaryBtn = document.getElementById('exportNotesSummaryBtn');
-
-
-    // PTT
+    
+    // Push-to-Talk (PTT) Elements
     const pttButton = document.getElementById('pttButton');
     const languageSelect = document.getElementById('languageSelect');
     const pttTranscriptDisplay = document.getElementById('pttTranscriptDisplay');
     
+    // General UI Elements
+    const messageEl = document.getElementById('message');
+    
+    // ========================================================================
+    // STATE VARIABLES
+    // ========================================================================
+    
+    // Audio Player State
+    const audioElement = new Audio();
+    let isPlaying = false;
+    
+    // File Management State
+    let currentFile = null;
+    let fileId = null;
+    let segments = [];
+    
+    // PTT State
     let wasPlayingBeforePTT = false;
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
     let recognitionTimeout;
-
-    // Create audio element
-    const audioElement = new Audio();
-    let isPlaying = false;
     
-    // File tracking variables
-    let currentFile = null;
-    let fileId = null;
-    let segments = [];
-    
-    // Bookmarks array
+    // Feature Data Arrays
     let bookmarks = [];
-   
-    // Command history array
     let commands = [];
+    let notes = [];
+    let chatHistory = [];
+    
+    // UI State Flags
     let isExecutingCommand = false;
-
+    let isWaitingForResponse = false;
+    
+    // ========================================================================
+    // CONFIGURATION
+    // ========================================================================
+    
     // Backend API URL - change this to match your Flask server
     const API_URL = 'http://localhost:5000';
-   
-    let chatHistory = [];
-    let isWaitingForResponse = false;
-
-    // Click event for the upload button
-    uploadBtn.addEventListener('click', function() {
-        fileInput.click();
-    });
-   
-
-    // Set up event listeners
-    executeCommandBtn.addEventListener('click', executeCommand);
     
-    // Command input enter key event
+    // ========================================================================
+    // EVENT LISTENERS SETUP
+    // ========================================================================
+    
+    // File Upload Event Listeners
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileSelect);
+    uploadContainer.addEventListener('dragover', handleDragOver);
+    uploadContainer.addEventListener('dragleave', handleDragLeave);
+    uploadContainer.addEventListener('drop', handleFileDrop);
+    
+    // Audio Player Event Listeners
+    playPauseBtn.addEventListener('click', togglePlayPause);
+    progressContainer.addEventListener('click', setProgress);
+    audioElement.addEventListener('timeupdate', updateProgress);
+    audioElement.addEventListener('loadedmetadata', updateTotalTime);
+    audioElement.addEventListener('ended', resetPlayer);
+    
+    // Transcription Event Listeners
+    transcribeBtn.addEventListener('click', transcribeAudio);
+    exportBtn.addEventListener('click', exportTranscript);
+    importBtn.addEventListener('click', () => transcriptFileInput.click());
+    transcriptFileInput.addEventListener('change', importTranscript);
+    
+    // Bookmark Event Listeners
+    bookmarkBtn.addEventListener('click', addBookmark);
+    clearBookmarksBtn.addEventListener('click', clearBookmarks);
+    exportBookmarksBtn.addEventListener('click', exportBookmarks);
+    
+    // Summary Event Listeners
+    generateSummaryBtn.addEventListener('click', generateSummary);
+    
+    // Chat Event Listeners
+    sendChatBtn.addEventListener('click', sendChatMessage);
+    resetChatBtn.addEventListener('click', resetChat);
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
+    
+    // Command Event Listeners
+    executeCommandBtn.addEventListener('click', executeCommand);
     commandInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -109,127 +162,79 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Add command container toggle functionality
-    setupCommandToggle();
-
-    // File selection event
-    fileInput.addEventListener('change', handleFileSelect);
+    // Notes Event Listeners
+    addNoteBtn.addEventListener('click', addNewNote);
+    clearNotesBtn.addEventListener('click', clearNotes);
+    exportNotesJsonlBtn.addEventListener('click', () => exportNotes('jsonl'));
+    exportNotesTextBtn.addEventListener('click', () => exportNotes('text'));
+    exportNotesSummaryBtn.addEventListener('click', () => exportNotes('summary'));
     
-    // Drag and drop events
-    uploadContainer.addEventListener('dragover', handleDragOver);
-    uploadContainer.addEventListener('dragleave', handleDragLeave);
-    uploadContainer.addEventListener('drop', handleFileDrop);
-    
-    // Play/pause button event
-    playPauseBtn.addEventListener('click', togglePlayPause);
-    
-    // Progress bar click event
-    progressContainer.addEventListener('click', setProgress);
-    
-    // Transcribe button event
-    transcribeBtn.addEventListener('click', transcribeAudio);
-    
-    // Export transcript button event
-    exportBtn.addEventListener('click', exportTranscript);
-       
-    // Import transcript
-    importBtn.addEventListener('click', () => transcriptFileInput.click());
-    transcriptFileInput.addEventListener('change', importTranscript);
-
-    // PTT
+    // PTT Event Listeners
     pttButton.addEventListener('mousedown', startPtt);
     pttButton.addEventListener('mouseup', stopPtt);
-    pttButton.addEventListener('mouseleave', (e) => { // Stop recording if mouse leaves button while pressed
+    pttButton.addEventListener('mouseleave', (e) => {
+        // Stop recording if mouse leaves button while pressed
         if (isRecording) {
             stopPtt(e);
         }
     });
-
-    // Bookmark button event
-    bookmarkBtn.addEventListener('click', addBookmark);
     
-    // Clear bookmarks button event
-    clearBookmarksBtn.addEventListener('click', clearBookmarks);
+    // ========================================================================
+    // INITIALIZATION
+    // ========================================================================
     
-    // Export bookmarks button event
-    exportBookmarksBtn.addEventListener('click', exportBookmarks);
-   
-   // Add the bookmarks toggle functionality
+    // Initialize UI toggle functionality
+    setupCommandToggle();
     setupBookmarksToggle();
-
-    // Add the transcription toggle functionality
     setupTranscriptionToggle();
-    
-    // Add the summary toggle fucntionality
     setupSummaryToggle();
-
-    // Generate summary button event
-    generateSummaryBtn.addEventListener('click', generateSummary);
-
-    // Audio events
-    audioElement.addEventListener('timeupdate', updateProgress);
-    audioElement.addEventListener('loadedmetadata', updateTotalTime);
-    audioElement.addEventListener('ended', resetPlayer);
-    
-    sendChatBtn.addEventListener('click', sendChatMessage);
-    resetChatBtn.addEventListener('click', resetChat);
-
-    // Chat input enter key event
-    chatInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendChatMessage();
-        }
-    });
-
-    // Add chat toggle functionality
     setupChatToggle();
-
-    // Notes array
-    let notes = [];
-
-    // Add Note button event
-    addNoteBtn.addEventListener('click', addNewNote);
-
-    // Clear notes button event
-    clearNotesBtn.addEventListener('click', clearNotes);
-
-    // Export notes button events
-    exportNotesJsonlBtn.addEventListener('click', () => exportNotes('jsonl'));
-    exportNotesTextBtn.addEventListener('click', () => exportNotes('text'));
-    exportNotesSummaryBtn.addEventListener('click', () => exportNotes('summary'));
-
-    // Add the notes toggle functionality
     setupNotesToggle();
-
-    // Call the initialization
+    
+    // Initialize notes container
     initializeNotesContainer();
 
-    // Handle file selection
+    // ========================================================================
+    // FILE HANDLING FUNCTIONS
+    // ========================================================================
+
+    /**
+     * Handles file selection from input element
+     * @param {Event} e - File input change event
+     */
     function handleFileSelect(e) {
         const file = e.target.files[0];
         if (file) {
             uploadFile(file);
         }
     }
-    
-    // Handle drag over
+
+    /**
+     * Handles drag over event for file upload area
+     * @param {Event} e - Drag over event
+     */
     function handleDragOver(e) {
         e.preventDefault();
         uploadContainer.classList.add('drag-over');
     }
-    
-    // Handle drag leave
+
+    /**
+     * Handles drag leave event for file upload area
+     * @param {Event} e - Drag leave event
+     */
     function handleDragLeave(e) {
         e.preventDefault();
         uploadContainer.classList.remove('drag-over');
     }
-    
-    // Handle file drop
+
+    /**
+     * Handles file drop event for drag and drop upload
+     * @param {Event} e - Drop event
+     */
     function handleFileDrop(e) {
         e.preventDefault();
         uploadContainer.classList.remove('drag-over');
-        
+
         const file = e.dataTransfer.files[0];
         if (file && file.type.startsWith('audio/')) {
             uploadFile(file);
@@ -237,12 +242,15 @@ document.addEventListener('DOMContentLoaded', function() {
             showMessage('Please upload an audio file');
         }
     }
-    
-    // Upload file to server
+
+    /**
+     * Uploads audio file to server and initializes player
+     * @param {File} file - Audio file to upload
+     */
     function uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         fetch(`${API_URL}/upload`, {
             method: 'POST',
             body: formData
@@ -253,41 +261,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Store file details
                 currentFile = file;
                 fileId = data.file_id;
-                
+
                 // Create local URL for playback
                 const objectURL = URL.createObjectURL(file);
                 audioElement.src = objectURL;
-                
-                // Update UI
-                audioInfo.textContent = file.name;
-                playerContainer.style.display = 'block';
-                uploadContainer.style.display = 'none'; //make the upload box disappear after file is uploaded
-                transcriptionContainer.style.display = 'none';
-                transcriptionContent.innerHTML = '';
-                segments = [];
-                exportBtn.style.display = 'none';
-             
-                summaryContainer.style.display = 'none';
-                summaryText.style.display = 'none';
-                noSummaryMessage.style.display = 'block';
-                generateSummaryBtn.disabled = true;
-                
-                // Hide chat container when new file is uploaded
-                chatContainer.style.display = 'none';
-                chatMessages.innerHTML = '<div class="chat-message system-message">Ask questions about the transcript or request analysis.</div>';
-                chatHistory = [];
-                
-                bookmarksContainer.style.display = 'none';
 
-                // Reset player state
+                // Update UI state
+                updateUIAfterFileUpload(file.name);
                 resetPlayerState();
-                
-                // Clear bookmarks
                 clearBookmarks();
-                
-                // Disable bookmark button until transcription is done
-                bookmarkBtn.disabled = true;
-                exportBookmarksBtn.disabled = true;
                 
                 showMessage('Audio loaded successfully');
             } else {
@@ -299,19 +281,56 @@ document.addEventListener('DOMContentLoaded', function() {
             showMessage('Error uploading file');
         });
     }
-    
-    // Transcribe the audio file
+
+    /**
+     * Updates UI elements after successful file upload
+     * @param {string} fileName - Name of uploaded file
+     */
+    function updateUIAfterFileUpload(fileName) {
+        // Update player info
+        audioInfo.textContent = fileName;
+        playerContainer.style.display = 'block';
+        uploadContainer.style.display = 'none';
+        
+        // Reset transcription UI
+        transcriptionContainer.style.display = 'none';
+        transcriptionContent.innerHTML = '';
+        segments = [];
+        exportBtn.style.display = 'none';
+        
+        // Reset summary UI
+        summaryContainer.style.display = 'none';
+        summaryText.style.display = 'none';
+        noSummaryMessage.style.display = 'block';
+        generateSummaryBtn.disabled = true;
+        
+        // Reset chat UI
+        chatContainer.style.display = 'none';
+        chatMessages.innerHTML = '<div class="chat-message system-message">Ask questions about the transcript or request analysis.</div>';
+        chatHistory = [];
+        
+        // Reset bookmarks UI
+        bookmarksContainer.style.display = 'none';
+        bookmarkBtn.disabled = true;
+        exportBookmarksBtn.disabled = true;
+    }
+
+    // ========================================================================
+    // TRANSCRIPTION FUNCTIONS
+    // ========================================================================
+
+    /**
+     * Initiates transcription of uploaded audio file
+     */
     function transcribeAudio() {
         if (!fileId) {
             showMessage('Please upload a file first');
             return;
         }
-        
-        // Disable button and show loading indicator
-        transcribeBtn.disabled = true;
-        transcribeBtn.classList.add('btn-disabled');
-        loadingIndicator.style.display = 'block';
-        
+
+        // Update UI for transcription in progress
+        setTranscriptionInProgress(true);
+
         fetch(`${API_URL}/transcribe`, {
             method: 'POST',
             headers: {
@@ -324,91 +343,111 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            // Hide loading indicator
-            loadingIndicator.style.display = 'none';
-            
+            setTranscriptionInProgress(false);
+
             if (data.segments) {
                 segments = data.segments;
                 displayTranscription(segments);
+                enablePostTranscriptionFeatures();
                 showMessage('Transcription completed');
-                
-                // Enable bookmark button now that transcription is available
-                bookmarkBtn.disabled = false;
-
-                // Show chat container now that transcription is complete
-                chatContainer.style.display = 'block';
-        
-                // Show bookmarks container
-                bookmarksContainer.style.display = 'block';
-        
-                // Show notes container
-                notesContainer.style.display = 'block';
-
-                // Add welcome message
-                addMessageToChat('system', 'Transcription complete! You can now ask questions about the audio.');
-
             } else {
                 showMessage('Error: ' + data.error);
             }
-            
-            // Re-enable button
-            transcribeBtn.disabled = false;
-            transcribeBtn.classList.remove('btn-disabled');
         })
         .catch(error => {
             console.error('Error:', error);
             showMessage('Error during transcription');
-            loadingIndicator.style.display = 'none';
-            transcribeBtn.disabled = false;
-            transcribeBtn.classList.remove('btn-disabled');
+            setTranscriptionInProgress(false);
         });
     }
-    
-    // Display transcription segments
+
+    /**
+     * Sets UI state for transcription in progress
+     * @param {boolean} inProgress - Whether transcription is in progress
+     */
+    function setTranscriptionInProgress(inProgress) {
+        transcribeBtn.disabled = inProgress;
+        transcribeBtn.classList.toggle('btn-disabled', inProgress);
+        loadingIndicator.style.display = inProgress ? 'block' : 'none';
+    }
+
+    /**
+     * Enables features that require completed transcription
+     */
+    function enablePostTranscriptionFeatures() {
+        // Enable bookmark functionality
+        bookmarkBtn.disabled = false;
+        
+        // Show interface containers
+        chatContainer.style.display = 'block';
+        bookmarksContainer.style.display = 'block';
+        notesContainer.style.display = 'block';
+        
+        // Add welcome message to chat
+        addMessageToChat('system', 'Transcription complete! You can now ask questions about the audio.');
+    }
+
+    /**
+     * Displays transcription segments with clickable timestamps
+     * @param {Array} segments - Array of transcription segments
+     */
     function displayTranscription(segments) {
         transcriptionContent.innerHTML = '';
-        
+
         segments.forEach((segment, index) => {
-            const segmentEl = document.createElement('div');
-            segmentEl.className = 'transcript-segment';
-            segmentEl.dataset.start = segment.start;
-            segmentEl.dataset.end = segment.end;
-            segmentEl.id = `segment-${index}`;
-            
-            const timeEl = document.createElement('div');
-            timeEl.className = 'segment-time';
-            timeEl.textContent = `[${formatTime(segment.start)} - ${formatTime(segment.end)}]`;
-            timeEl.addEventListener('click', () => {
-                audioElement.currentTime = segment.start;
-                if (!isPlaying) {
-                    togglePlayPause();
-                }
-            });
-            
-            const textEl = document.createElement('div');
-            textEl.className = 'segment-text';
-            textEl.textContent = segment.text;
-            
-            segmentEl.appendChild(timeEl);
-            segmentEl.appendChild(textEl);
+            const segmentEl = createTranscriptionSegmentElement(segment, index);
             transcriptionContent.appendChild(segmentEl);
         });
-        
-        // Show transcription container
-        transcriptionContainer.style.display = 'block';
-            
-        // Show export button
-        exportBtn.style.display = 'inline-block';
 
+        // Show transcription UI elements
+        transcriptionContainer.style.display = 'block';
+        exportBtn.style.display = 'inline-block';
         summaryContainer.style.display = 'block';
         generateSummaryBtn.disabled = false;
     }
-    
-    // Add bookmark at current time
-    //
-    //
-    //
-    // Add bookmark at current time - MODIFIED
+
+    /**
+     * Creates a DOM element for a transcription segment
+     * @param {Object} segment - Transcription segment data
+     * @param {number} index - Segment index
+     * @returns {HTMLElement} - Created segment element
+     */
+    function createTranscriptionSegmentElement(segment, index) {
+        const segmentEl = document.createElement('div');
+        segmentEl.className = 'transcript-segment';
+        segmentEl.dataset.start = segment.start;
+        segmentEl.dataset.end = segment.end;
+        segmentEl.id = `segment-${index}`;
+
+        // Create clickable timestamp
+        const timeEl = document.createElement('div');
+        timeEl.className = 'segment-time';
+        timeEl.textContent = `[${formatTime(segment.start)} - ${formatTime(segment.end)}]`;
+        timeEl.addEventListener('click', () => {
+            audioElement.currentTime = segment.start;
+            if (!isPlaying) {
+                togglePlayPause();
+            }
+        });
+
+        // Create text content
+        const textEl = document.createElement('div');
+        textEl.className = 'segment-text';
+        textEl.textContent = segment.text;
+
+        segmentEl.appendChild(timeEl);
+        segmentEl.appendChild(textEl);
+        
+        return segmentEl;
+    }
+
+    // ========================================================================
+    // BOOKMARK FUNCTIONS
+    // ========================================================================
+
+    /**
+     * Adds a bookmark at the current audio playback time
+     */
     function addBookmark() {
         if (!audioElement.src || segments.length === 0) {
             showMessage('Please upload and transcribe audio first');
@@ -416,218 +455,209 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const currentTime = audioElement.currentTime;
-        const bookmarkId = Date.now(); // Unique ID for the bookmark
-
-        // Find relevant transcript segments (5 seconds before, 2 seconds after)
+        const bookmarkId = Date.now();
+        
+        // Get relevant transcript text around current time
         const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
 
-        // Create bookmark object - ADDED comments field
         const bookmark = {
             id: bookmarkId,
             time: currentTime,
             text: relevantText,
             timeFormatted: formatTime(currentTime),
             title: 'bookmark',
-            comments: '' // NEW: Empty comments field
+            comments: ''
         };
 
-        // Add to bookmarks array
         bookmarks.push(bookmark);
-
-        // Display bookmark
         displayBookmarks();
-
-        // Enable export button if we have bookmarks
+        
         exportBookmarksBtn.disabled = bookmarks.length === 0;
-
         showMessage('Bookmark added');
     }
-   
 
-    // Function to add a "Copy to Note" button to each bookmark
-    function enhanceBookmarkUI() {
-        // Find all existing bookmark items
-        document.querySelectorAll('.bookmark-item').forEach(bookmarkItem => {
-            const bookmarkActions = bookmarkItem.querySelector('.bookmark-actions');
-            
-            // Check if the copy button already exists
-            if (!bookmarkItem.querySelector('.bookmark-copy-note')) {
-                const copyBtn = document.createElement('span');
-                copyBtn.className = 'bookmark-copy-note';
-                copyBtn.textContent = '📋';
-                copyBtn.title = 'Copy to Notes';
-                copyBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    
-                    // Get bookmark data
-                    const bookmarkId = bookmarkItem.dataset.id;
-                    const bookmark = bookmarks.find(b => b.id.toString() === bookmarkId);
-                    
-                    if (bookmark) {
-                        // Create a new note from bookmark
-                        const noteText = `Bookmark from [${bookmark.timeFormatted}]:\n${bookmark.text}`;
-                        createNote(`${bookmark.title} (from bookmark)`, noteText);
-                        showMessage('Bookmark copied to notes');
-                    }
-                });
-                
-                // Insert before the delete button
-                const deleteBtn = bookmarkItem.querySelector('.bookmark-delete');
-                bookmarkActions.insertBefore(copyBtn, deleteBtn);
-            }
-        });
-    }
-
-
-    // Get relevant transcript text for the given time range
+    /**
+     * Retrieves relevant transcript text for a given time range
+     * @param {number} startTime - Start time in seconds
+     * @param {number} endTime - End time in seconds
+     * @returns {string} - Concatenated transcript text
+     */
     function getRelevantTranscriptText(startTime, endTime) {
         // Ensure times are within valid range
         startTime = Math.max(0, startTime);
         endTime = Math.min(audioElement.duration, endTime);
-        
+
         let relevantText = '';
-        
+
         // Find segments that overlap with the time range
         for (const segment of segments) {
-            // Check if segment overlaps with the range
             if ((segment.start <= endTime) && (segment.end >= startTime)) {
                 relevantText += segment.text + ' ';
             }
         }
-        
+
         return relevantText.trim() || 'No transcript available for this timestamp';
     }
-    
-    // Display all bookmarks - MODIFIED
+
+    /**
+     * Displays all bookmarks in the bookmarks container
+     */
     function displayBookmarks() {
-        // Clear current bookmarks display
         bookmarksContent.innerHTML = '';
-        
-        // Show/hide no bookmarks message
+
+        // Handle empty bookmarks state
         if (bookmarks.length === 0) {
             noBookmarksMessage.style.display = 'block';
             exportBookmarksBtn.disabled = true;
             return;
         }
-        
+
         noBookmarksMessage.style.display = 'none';
         exportBookmarksBtn.disabled = false;
-        
-        // Sort bookmarks by time
-        bookmarks.sort((a, b) => a.time - b.time);
-        
-        // Create bookmark elements
-        bookmarks.forEach(bookmark => {
-            const bookmarkEl = document.createElement('div');
-            bookmarkEl.className = 'bookmark-item';
-            bookmarkEl.dataset.id = bookmark.id;
-            
-            const bookmarkHeader = document.createElement('div');
-            bookmarkHeader.className = 'bookmark-actions';
-        
-            const titleEl = document.createElement('span');
-            titleEl.className = 'bookmark-title';
-            titleEl.textContent = bookmark.title;
 
-            const timeEl = document.createElement('div');
-            timeEl.className = 'bookmark-time';
-            timeEl.textContent = formatTime(bookmark.time);
-            timeEl.addEventListener('click', () => {
-                // Jump to bookmark time and play
-                audioElement.currentTime = bookmark.time;
-                if (!isPlaying) {
-                    togglePlayPause();
-                }
-            });
-            
-            // NEW: Action buttons container
-            const actionButtons = document.createElement('div');
-            actionButtons.className = 'bookmark-action-buttons';
-            
-            // NEW: Edit comments button
-            const editCommentsBtn = document.createElement('span');
-            editCommentsBtn.className = 'bookmark-edit-comments';
-            editCommentsBtn.textContent = '✏️';
-            editCommentsBtn.title = 'Edit comments';
-            editCommentsBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                editBookmarkComments(bookmark.id);
-            });
-            
-            // NEW: Generate comments button
-            const generateCommentsBtn = document.createElement('span');
-            generateCommentsBtn.className = 'bookmark-generate-comments';
-            generateCommentsBtn.textContent = '🤖';
-            generateCommentsBtn.title = 'Generate AI comments';
-            generateCommentsBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                generateBookmarkComments(bookmark.id);
-            });
-            
-            // Copy to note button (existing)
-            const copyBtn = document.createElement('span');
-            copyBtn.className = 'bookmark-copy-note';
-            copyBtn.textContent = '📋';
-            copyBtn.title = 'Copy to Notes';
-            copyBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                copyBookmarkToNote(bookmark.id);
-            });
-            
-            const deleteBtn = document.createElement('span');
-            deleteBtn.className = 'bookmark-delete';
-            deleteBtn.innerHTML = '&times;';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deleteBookmark(bookmark.id);
-            });
-            
-            actionButtons.appendChild(editCommentsBtn);
-            actionButtons.appendChild(generateCommentsBtn);
-            actionButtons.appendChild(copyBtn);
-            actionButtons.appendChild(deleteBtn);
-            
-            bookmarkHeader.appendChild(titleEl);
-            bookmarkHeader.appendChild(timeEl);
-            bookmarkHeader.appendChild(actionButtons);
-            
-            const textEl = document.createElement('div');
-            textEl.className = 'bookmark-text';
-            textEl.textContent = bookmark.text;
-            
-            // NEW: Comments section
-            const commentsEl = document.createElement('div');
-            commentsEl.className = 'bookmark-comments';
-            if (bookmark.comments) {
-                commentsEl.innerHTML = `<strong>Comments:</strong> ${bookmark.comments}`;
-            }
-            
-            bookmarkEl.appendChild(bookmarkHeader);
-            bookmarkEl.appendChild(textEl);
-            bookmarkEl.appendChild(commentsEl);
+        // Sort bookmarks by time and display
+        bookmarks.sort((a, b) => a.time - b.time);
+        bookmarks.forEach(bookmark => {
+            const bookmarkEl = createBookmarkElement(bookmark);
             bookmarksContent.appendChild(bookmarkEl);
         });
     }
 
+    /**
+     * Creates a DOM element for a bookmark
+     * @param {Object} bookmark - Bookmark data object
+     * @returns {HTMLElement} - Created bookmark element
+     */
+    function createBookmarkElement(bookmark) {
+        const bookmarkEl = document.createElement('div');
+        bookmarkEl.className = 'bookmark-item';
+        bookmarkEl.dataset.id = bookmark.id;
 
-    // NEW: Edit bookmark comments function
+        // Create header with title and time
+        const bookmarkHeader = document.createElement('div');
+        bookmarkHeader.className = 'bookmark-actions';
+
+        const titleEl = document.createElement('span');
+        titleEl.className = 'bookmark-title';
+        titleEl.textContent = bookmark.title;
+
+        const timeEl = document.createElement('div');
+        timeEl.className = 'bookmark-time';
+        timeEl.textContent = formatTime(bookmark.time);
+        timeEl.addEventListener('click', () => {
+            audioElement.currentTime = bookmark.time;
+            if (!isPlaying) {
+                togglePlayPause();
+            }
+        });
+
+        // Create action buttons
+        const actionButtons = createBookmarkActionButtons(bookmark);
+
+        bookmarkHeader.appendChild(titleEl);
+        bookmarkHeader.appendChild(timeEl);
+        bookmarkHeader.appendChild(actionButtons);
+
+        // Create text content
+        const textEl = document.createElement('div');
+        textEl.className = 'bookmark-text';
+        textEl.textContent = bookmark.text;
+
+        // Create comments section
+        const commentsEl = document.createElement('div');
+        commentsEl.className = 'bookmark-comments';
+        if (bookmark.comments) {
+            commentsEl.innerHTML = `<strong>Comments:</strong> ${bookmark.comments}`;
+        }
+
+        bookmarkEl.appendChild(bookmarkHeader);
+        bookmarkEl.appendChild(textEl);
+        bookmarkEl.appendChild(commentsEl);
+        
+        return bookmarkEl;
+    }
+
+    /**
+     * Creates action buttons for a bookmark
+     * @param {Object} bookmark - Bookmark data object
+     * @returns {HTMLElement} - Container with action buttons
+     */
+    function createBookmarkActionButtons(bookmark) {
+        const actionButtons = document.createElement('div');
+        actionButtons.className = 'bookmark-action-buttons';
+
+        // Edit comments button
+        const editCommentsBtn = document.createElement('span');
+        editCommentsBtn.className = 'bookmark-edit-comments';
+        editCommentsBtn.textContent = '✏️';
+        editCommentsBtn.title = 'Edit comments';
+        editCommentsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            editBookmarkComments(bookmark.id);
+        });
+
+        // Generate AI comments button
+        const generateCommentsBtn = document.createElement('span');
+        generateCommentsBtn.className = 'bookmark-generate-comments';
+        generateCommentsBtn.textContent = '🤖';
+        generateCommentsBtn.title = 'Generate AI comments';
+        generateCommentsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            generateBookmarkComments(bookmark.id);
+        });
+
+        // Copy to notes button
+        const copyBtn = document.createElement('span');
+        copyBtn.className = 'bookmark-copy-note';
+        copyBtn.textContent = '📋';
+        copyBtn.title = 'Copy to Notes';
+        copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            copyBookmarkToNote(bookmark.id);
+        });
+
+        // Delete button
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'bookmark-delete';
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteBookmark(bookmark.id);
+        });
+
+        actionButtons.appendChild(editCommentsBtn);
+        actionButtons.appendChild(generateCommentsBtn);
+        actionButtons.appendChild(copyBtn);
+        actionButtons.appendChild(deleteBtn);
+
+        return actionButtons;
+    }
+
+    // ========================================
+    // BOOKMARK MANAGEMENT FUNCTIONS
+    // ========================================
+
+    /**
+     * Edit bookmark comments in-place with textarea interface
+     * @param {string} id - The bookmark ID
+     */
     function editBookmarkComments(id) {
         const bookmark = bookmarks.find(b => b.id === id);
         if (!bookmark) return;
-        
+
         const bookmarkEl = document.querySelector(`.bookmark-item[data-id="${id}"]`);
         const commentsEl = bookmarkEl.querySelector('.bookmark-comments');
-        
+
         // Create textarea for editing
         const textarea = document.createElement('textarea');
         textarea.className = 'bookmark-comments-textarea';
         textarea.value = bookmark.comments || '';
         textarea.placeholder = 'Add your comments here...';
-        
+
         // Create save/cancel buttons
         const editActions = document.createElement('div');
         editActions.className = 'bookmark-edit-actions';
-        
+
         const saveBtn = document.createElement('button');
         saveBtn.className = 'btn btn-sm btn-success';
         saveBtn.textContent = 'Save';
@@ -636,27 +666,29 @@ document.addEventListener('DOMContentLoaded', function() {
             displayBookmarks();
             showMessage('Comments updated');
         });
-        
+
         const cancelBtn = document.createElement('button');
         cancelBtn.className = 'btn btn-sm';
         cancelBtn.textContent = 'Cancel';
         cancelBtn.addEventListener('click', () => {
             displayBookmarks();
         });
-        
+
         editActions.appendChild(cancelBtn);
         editActions.appendChild(saveBtn);
-        
+
         // Replace comments section with edit interface
         commentsEl.innerHTML = '';
         commentsEl.appendChild(textarea);
         commentsEl.appendChild(editActions);
-        
+
         textarea.focus();
     }
 
-    // NEW: Generate AI comments for bookmark
-    // Load prompt template from file or fallback to default
+    /**
+     * Load prompt template from file or use default fallback
+     * @returns {Promise<string>} The prompt template text
+     */
     async function loadPromptTemplate() {
         try {
             const response = await fetch('prompts/smart_bookmark.txt');
@@ -666,30 +698,34 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.warn('Could not load prompt file, using default:', error);
         }
-        
+
         // Fallback to default prompt
         return `Generate a brief, insightful comment about this audio transcript segment. Focus on key points, themes, or important information. Keep it concise (1-2 sentences):
 
     "{{bookmark_text}}"`;
     }
 
+    /**
+     * Generate AI-powered comments for a bookmark using API
+     * @param {string} id - The bookmark ID
+     */
     async function generateBookmarkComments(id) {
         const bookmark = bookmarks.find(b => b.id === id);
         if (!bookmark) return;
-        
+
         const bookmarkEl = document.querySelector(`.bookmark-item[data-id="${id}"]`);
         const commentsEl = bookmarkEl.querySelector('.bookmark-comments');
-        
+
         // Show loading indicator
         commentsEl.innerHTML = '<div class="loading-indicator"><div class="loading-spinner"></div><p>Generating comments...</p></div>';
-        
+
         try {
             // Load prompt from file
             const promptTemplate = await loadPromptTemplate();
-            
+
             // Replace placeholder with actual bookmark text
             const prompt = promptTemplate.replace('{{bookmark_text}}', bookmark.text);
-            
+
             // Make API call
             const response = await fetch(`${API_URL}/generate_summary`, {
                 method: 'POST',
@@ -700,9 +736,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     transcript_text: prompt
                 })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.summary) {
                 // Update bookmark with generated comments
                 bookmark.comments = data.summary;
@@ -719,89 +755,96 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // NEW: Copy bookmark to note (modified to include comments)
+    /**
+     * Copy bookmark content to notes including comments
+     * @param {string} id - The bookmark ID
+     */
     function copyBookmarkToNote(id) {
         const bookmark = bookmarks.find(b => b.id === id);
         if (!bookmark) return;
-        
+
         // Create note text with comments if available
         let noteText = `Bookmark from [${bookmark.timeFormatted}]:\n${bookmark.text}`;
         if (bookmark.comments) {
             noteText += `\n\nComments: ${bookmark.comments}`;
         }
-        
+
         createNote(`${bookmark.title} (from bookmark)`, noteText);
         showMessage('Bookmark copied to notes');
     }
 
-
-    // Delete a bookmark
+    /**
+     * Delete a bookmark by ID
+     * @param {string} id - The bookmark ID to delete
+     */
     function deleteBookmark(id) {
         // Filter out the bookmark with the given id
         bookmarks = bookmarks.filter(bookmark => bookmark.id !== id);
-        
+
         // Update display
         displayBookmarks();
-        
+
         // Disable export button if no bookmarks left
         exportBookmarksBtn.disabled = bookmarks.length === 0;
-        
+
         showMessage('Bookmark deleted');
     }
-    
-    // Clear all bookmarks
+
+    /**
+     * Clear all bookmarks and reset UI
+     */
     function clearBookmarks() {
         bookmarks = [];
         displayBookmarks();
         exportBookmarksBtn.disabled = true;
     }
-   
 
-
-    // Export bookmarks as JSONL - MODIFIED to include comments
+    /**
+     * Export bookmarks as JSONL file with metadata
+     */
     function exportBookmarks() {
         if (bookmarks.length === 0) {
             showMessage('No bookmarks to export');
             return;
         }
-        
+
         // Get the audio filename (without extension) for use in the export filename
         const audioName = currentFile ? currentFile.name.replace(/\.[^/.]+$/, "") : "audio";
-        
+
         // Prepare data for export
         let jsonlContent = '';
-        
+
         // Sort bookmarks by time
         const sortedBookmarks = [...bookmarks].sort((a, b) => a.time - b.time);
-        
+
         // Create JSONL content (one JSON object per line)
         sortedBookmarks.forEach(bookmark => {
-            // Create export object with relevant fields - ADDED comments
+            // Create export object with relevant fields
             const exportObj = {
                 timestamp: bookmark.time,
                 timestamp_formatted: formatTime(bookmark.time),
                 text: bookmark.text,
                 title: bookmark.title,
-                comments: bookmark.comments || '', // NEW: Include comments
+                comments: bookmark.comments || '',
                 audio_file: currentFile ? currentFile.name : null,
                 file_id: fileId
             };
-            
+
             // Add this object as a line in the JSONL file
             jsonlContent += JSON.stringify(exportObj) + '\n';
         });
-        
+
         // Create Blob and download link
         const blob = new Blob([jsonlContent], { type: 'application/x-jsonlines' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `${audioName}_bookmarks.jsonl`;
-        
+
         // Append, click and remove
         document.body.appendChild(a);
         a.click();
-        
+
         // Clean up
         setTimeout(() => {
             document.body.removeChild(a);
@@ -810,28 +853,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     }
 
+    // ========================================
+    // AUDIO PLAYER FUNCTIONS
+    // ========================================
 
-
-
-    
-    // Highlight active transcription segment
+    /**
+     * Highlight the currently playing transcript segment
+     */
     function highlightCurrentSegment() {
         if (segments.length === 0) return;
-        
+
         const currentTime = audioElement.currentTime;
-        
+
         // Remove currently-playing class from all segments
         document.querySelectorAll('.transcript-segment').forEach(el => {
             el.classList.remove('currently-playing');
         });
-        
+
         // Find and highlight current segment
         for (let i = 0; i < segments.length; i++) {
             if (currentTime >= segments[i].start && currentTime <= segments[i].end) {
                 const segmentEl = document.getElementById(`segment-${i}`);
                 if (segmentEl) {
                     segmentEl.classList.add('currently-playing');
-                    
+
                     // Scroll to segment if it's not visible
                     if (!isElementInViewport(segmentEl, transcriptionContainer)) {
                         segmentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -841,19 +886,26 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-    
-    // Check if element is visible within container
+
+    /**
+     * Check if element is visible within container viewport
+     * @param {HTMLElement} el - The element to check
+     * @param {HTMLElement} container - The container element
+     * @returns {boolean} True if element is visible
+     */
     function isElementInViewport(el, container) {
         const rect = el.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
-        
+
         return (
             rect.top >= containerRect.top &&
             rect.bottom <= containerRect.bottom
         );
     }
-    
-    // Toggle play/pause
+
+    /**
+     * Toggle play/pause state of audio player
+     */
     function togglePlayPause() {
         if (audioElement.src) {
             if (isPlaying) {
@@ -866,31 +918,38 @@ document.addEventListener('DOMContentLoaded', function() {
             isPlaying = !isPlaying;
         }
     }
-    
-    // Update progress bar
+
+    /**
+     * Update progress bar and time display during playback
+     */
     function updateProgress() {
         const { currentTime, duration } = audioElement;
         if (duration) {
             // Update progress bar
             const progressPercent = (currentTime / duration) * 100;
             progressBar.style.width = `${progressPercent}%`;
-            
+
             // Update current time display
             currentTimeEl.textContent = formatTime(currentTime);
-            
+
             // Highlight current segment in transcription
             highlightCurrentSegment();
         }
     }
-    
-    // Update total time display
+
+    /**
+     * Update total time display when audio metadata loads
+     */
     function updateTotalTime() {
         if (audioElement.duration) {
             totalTimeEl.textContent = formatTime(audioElement.duration);
         }
     }
-    
-    // Set progress on click
+
+    /**
+     * Set audio progress based on user click on progress bar
+     * @param {Event} e - The click event
+     */
     function setProgress(e) {
         const width = this.clientWidth;
         const clickX = e.offsetX;
@@ -899,42 +958,56 @@ document.addEventListener('DOMContentLoaded', function() {
             audioElement.currentTime = seekTime;
         }
     }
-    
-    // Reset player when audio ends
+
+    /**
+     * Reset player UI when audio ends
+     */
     function resetPlayer() {
         isPlaying = false;
         playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
     }
-    
-    // Reset player state
+
+    /**
+     * Reset player to initial state
+     */
     function resetPlayerState() {
         isPlaying = false;
         audioElement.currentTime = 0;
         progressBar.style.width = '0%';
         currentTimeEl.textContent = '00:00:00';
         playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-            
-            if (segments.length === 0) {
-                exportBtn.style.display = 'none';
-            }
 
+        if (segments.length === 0) {
+            exportBtn.style.display = 'none';
+        }
     }
-    
-    // Format time to hh:mm:ss
+
+    // ========================================
+    // UTILITY FUNCTIONS
+    // ========================================
+
+    /**
+     * Format time in seconds to HH:MM:SS format
+     * @param {number} seconds - Time in seconds
+     * @returns {string} Formatted time string
+     */
     function formatTime(seconds) {
         seconds = Math.max(0, seconds); // Ensure seconds is not negative
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = Math.floor(seconds % 60);
-        
+
         return [
             hrs.toString().padStart(2, '0'),
             mins.toString().padStart(2, '0'),
             secs.toString().padStart(2, '0')
         ].join(':');
     }
-    
-    // Show message
+
+    /**
+     * Display a temporary message to the user
+     * @param {string} text - The message to display
+     */
     function showMessage(text) {
         messageEl.textContent = text;
         setTimeout(() => {
@@ -942,763 +1015,830 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 
+    // ========================================
+    // TRANSCRIPT MANAGEMENT FUNCTIONS
+    // ========================================
 
-    // Function to handle the export
+    /**
+     * Export transcript data as JSON file
+     */
     function exportTranscript() {
         if (segments.length === 0) {
             showMessage('No transcript available to export');
             return;
         }
-        
+
         // Create a data object with the segments
         const exportData = {
             filename: currentFile.name,
             transcript: segments
         };
-        
+
         // Convert to JSON string
         const jsonString = JSON.stringify(exportData, null, 2);
-        
+
         // Create a blob with the data
         const blob = new Blob([jsonString], { type: 'application/json' });
-        
+
         // Create a download link
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `transcript_${currentFile.name.replace(/\.[^/.]+$/, '')}.json`;
-        
+
         // Trigger the download
         document.body.appendChild(a);
         a.click();
-        
+
         // Clean up
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         showMessage('Transcript exported successfully');
     }
 
-    // Function to handle import of transcript
+    /**
+     * Import transcript from JSON file
+     * @param {Event} e - The file input change event
+     */
     function importTranscript(e) {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         // Check if it's a JSON file
         if (!file.type.includes('json')) {
             showMessage('Please select a JSON file');
             return;
         }
-        
+
         const reader = new FileReader();
-        
+
         reader.onload = function(event) {
             try {
                 // Parse the JSON data
                 const importedData = JSON.parse(event.target.result);
-                
+
                 // Validate the data structure
                 if (!importedData.transcript || !Array.isArray(importedData.transcript)) {
                     throw new Error('Invalid transcript format');
                 }
-                
+
                 // Store the segments
                 segments = importedData.transcript;
-                
+
                 // Display the imported transcript
                 displayTranscription(segments);
-               
+
                 // Enable bookmark button now that transcription is available
                 bookmarkBtn.disabled = false;
-               
-                // Show chat container now that transcription is complete
-                chatContainer.style.display = 'block';
-    
-                // Show bookmarks container
-                bookmarksContainer.style.display = 'block';
 
-                // Show notes container
+                // Show containers
+                chatContainer.style.display = 'block';
+                bookmarksContainer.style.display = 'block';
                 notesContainer.style.display = 'block';
 
                 // Show a success message
                 showMessage('Transcript imported successfully');
-                
+
                 // If there's no audio file loaded but the transcript has a filename, show it
                 if (importedData.filename && !currentFile) {
                     audioInfo.textContent = `Transcript for: ${importedData.filename}`;
                     playerContainer.style.display = 'block';
                 }
-                
+
             } catch (error) {
                 console.error('Error parsing transcript:', error);
                 showMessage('Error importing transcript: Invalid format');
             }
         };
-        
+
         reader.onerror = function() {
             showMessage('Error reading file');
         };
-        
+
         reader.readAsText(file);
-        
+
         // Reset the file input so the same file can be selected again
         transcriptFileInput.value = '';
     }
 
+    // ========================================
+    // UI TOGGLE FUNCTIONS
+    // ========================================
 
-        // Function to toggle the bookmarks visibility
-        function setupBookmarksToggle() {
-            const toggleIcon = document.getElementById('toggleBookmarks');
-            const bookmarksContent = document.getElementById('bookmarksContent');
+    /**
+     * Setup bookmarks section toggle functionality
+     */
+    function setupBookmarksToggle() {
+        const toggleIcon = document.getElementById('toggleBookmarks');
+        const bookmarksContent = document.getElementById('bookmarksContent');
 
-            if (!toggleIcon || !bookmarksContent) return;
+        if (!toggleIcon || !bookmarksContent) return;
 
-            // Set up the click handler
-            document.querySelector('.bookmarks-header .header-with-toggle').addEventListener('click', function() {
-                toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
-                bookmarksContent.classList.toggle('collapsed');
+        // Set up the click handler
+        document.querySelector('.bookmarks-header .header-with-toggle').addEventListener('click', function() {
+            toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
+            bookmarksContent.classList.toggle('collapsed');
 
-                // Save the state to localStorage
-                const isCollapsed = bookmarksContent.classList.contains('collapsed');
-                localStorage.setItem('bookmarksCollapsed', isCollapsed);
-            });
+            // Save the state to localStorage
+            const isCollapsed = bookmarksContent.classList.contains('collapsed');
+            localStorage.setItem('bookmarksCollapsed', isCollapsed);
+        });
 
-            // Initialize based on saved state
-            const savedState = localStorage.getItem('bookmarksCollapsed');
-            if (savedState === 'true') {
-                toggleIcon.textContent = '►';
-                bookmarksContent.classList.add('collapsed');
-            }
+        // Initialize based on saved state
+        const savedState = localStorage.getItem('bookmarksCollapsed');
+        if (savedState === 'true') {
+            toggleIcon.textContent = '►';
+            bookmarksContent.classList.add('collapsed');
+        }
+    }
+
+    /**
+     * Setup transcription section toggle functionality
+     */
+    function setupTranscriptionToggle() {
+        const toggleIcon = document.getElementById('toggleTranscription');
+        const transcriptionContent = document.getElementById('transcriptionContent');
+
+        if (!toggleIcon || !transcriptionContent) return;
+
+        // Set up the click handler
+        document.querySelector('.transcription-header .header-with-toggle').addEventListener('click', function() {
+            toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
+            transcriptionContent.classList.toggle('collapsed');
+
+            // Save the state to localStorage
+            const isCollapsed = transcriptionContent.classList.contains('collapsed');
+            localStorage.setItem('transcriptionCollapsed', isCollapsed);
+        });
+
+        // Initialize based on saved state
+        const savedState = localStorage.getItem('transcriptionCollapsed');
+        if (savedState === 'true') {
+            toggleIcon.textContent = '►';
+            transcriptionContent.classList.add('collapsed');
+        }
+    }
+
+    /**
+     * Setup summary section toggle functionality
+     */
+    function setupSummaryToggle() {
+        const toggleIcon = document.getElementById('toggleSummary');
+        const summaryContent = document.getElementById('summaryContent');
+
+        if (!toggleIcon || !summaryContent) return;
+
+        // Set up the click handler
+        document.querySelector('.summary-header .header-with-toggle').addEventListener('click', function() {
+            toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
+            summaryContent.classList.toggle('collapsed');
+
+            // Save the state to localStorage
+            const isCollapsed = summaryContent.classList.contains('collapsed');
+            localStorage.setItem('summaryCollapsed', isCollapsed);
+        });
+
+        // Initialize based on saved state
+        const savedState = localStorage.getItem('summaryCollapsed');
+        if (savedState === 'true') {
+            toggleIcon.textContent = '►';
+            summaryContent.classList.add('collapsed');
+        }
+    }
+
+    /**
+     * Setup chat section toggle functionality
+     */
+    function setupChatToggle() {
+        const toggleIcon = document.getElementById('toggleChat');
+        const chatContent = document.getElementById('chatContent');
+
+        if (!toggleIcon || !chatContent) return;
+
+        // Set up the click handler
+        document.querySelector('.chat-header .header-with-toggle').addEventListener('click', function() {
+            toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
+            chatContent.classList.toggle('collapsed');
+
+            // Save the state to localStorage
+            const isCollapsed = chatContent.classList.contains('collapsed');
+            localStorage.setItem('chatCollapsed', isCollapsed);
+        });
+
+        // Initialize based on saved state
+        const savedState = localStorage.getItem('chatCollapsed');
+        if (savedState === 'true') {
+            toggleIcon.textContent = '►';
+            chatContent.classList.add('collapsed');
+        }
+    }
+
+    // ========================================
+    // SUMMARY GENERATION FUNCTIONS
+    // ========================================
+
+    /**
+     * Generate AI summary of the entire transcript
+     */
+    function generateSummary() {
+        if (segments.length === 0) {
+            showMessage('Please transcribe the audio first');
+            return;
         }
 
-        // Function to toggle the transcription visibility
-        function setupTranscriptionToggle() {
-            const toggleIcon = document.getElementById('toggleTranscription');
-            const transcriptionContent = document.getElementById('transcriptionContent');
-            
-            if (!toggleIcon || !transcriptionContent) return;
-            
-            // Set up the click handler
-            document.querySelector('.transcription-header .header-with-toggle').addEventListener('click', function() {
-                toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
-                transcriptionContent.classList.toggle('collapsed');
-                
-                // Save the state to localStorage
-                const isCollapsed = transcriptionContent.classList.contains('collapsed');
-                localStorage.setItem('transcriptionCollapsed', isCollapsed);
-            });
-            
-            // Initialize based on saved state
-            const savedState = localStorage.getItem('transcriptionCollapsed');
-            if (savedState === 'true') {
-                toggleIcon.textContent = '►';
-                transcriptionContent.classList.add('collapsed');
-            }
-        } 
+        // Disable button and show loading indicator
+        generateSummaryBtn.disabled = true;
+        noSummaryMessage.style.display = 'none';
+        summaryLoading.style.display = 'block';
 
-        function setupSummaryToggle() {
-            const toggleIcon = document.getElementById('toggleSummary');
-            const summaryContent = document.getElementById('summaryContent');
-            
-            if (!toggleIcon || !summaryContent) return;
-            
-            // set up the click handler
-            document.querySelector('.summary-header .header-with-toggle').addEventListener('click', function() {
-                toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
-                summaryContent.classList.toggle('collapsed');
-                
-                // save the state to localstorage
-                const isCollapsed = summaryContent.classList.contains('collapsed');
-                localStorage.setItem('summaryCollapsed', isCollapsed);
-            });
-            
-            // initialize based on saved state
-            const savedState = localStorage.getItem('summaryCollapsed');
-            if (savedState === 'true') {
-                toggleIcon.textContent = '►';
-                summaryContent.classList.add('collapsed');
+        // Compile all transcript text
+        let transcriptText = '';
+        segments.forEach(segment => {
+            transcriptText += segment.text + ' ';
+        });
+
+        // Call the backend API
+        fetch(`${API_URL}/generate_summary`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                transcript_text: transcriptText.trim()
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Hide loading indicator
+            summaryLoading.style.display = 'none';
+
+            if (data.summary) {
+                // Display the summary
+                summaryText.textContent = data.summary;
+                summaryText.style.display = 'block';
+                showMessage('Summary generated successfully');
+            } else {
+                showMessage('Error: ' + data.error);
+                noSummaryMessage.style.display = 'block';
             }
+
+            // Re-enable button
+            generateSummaryBtn.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error generating summary');
+            summaryLoading.style.display = 'none';
+            noSummaryMessage.style.display = 'block';
+            generateSummaryBtn.disabled = false;
+        });
+    }
+
+    // ========================================
+    // CHAT FUNCTIONS
+    // ========================================
+
+    /**
+     * Send chat message to AI assistant
+     */
+    function sendChatMessage() {
+        if (isWaitingForResponse) return;
+
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        // Clear input
+        chatInput.value = '';
+
+        // Add user message to UI
+        addMessageToChat('user', message);
+
+        // Show typing indicator
+        showTypingIndicator();
+
+        // Disable send button
+        isWaitingForResponse = true;
+        sendChatBtn.disabled = true;
+
+        // Get relevant transcript context
+        let transcriptContext = '';
+        if (segments.length > 0) {
+            // Format segments for context
+            transcriptContext = segments.map(segment =>
+                `[${formatTime(segment.start)} - ${formatTime(segment.end)}]: ${segment.text}`
+            ).join('\n');
         }
 
-        // Add this function to generate the summary
-        function generateSummary() {
-            if (segments.length === 0) {
-                showMessage('Please transcribe the audio first');
+        // Make API request
+        fetch(`${API_URL}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                query: message,
+                transcript_context: transcriptContext,
+                chat_history: chatHistory.slice(-10) // Send last 10 messages for context
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Remove typing indicator
+            removeTypingIndicator();
+
+            if (data.response) {
+                // Add assistant message to UI
+                addMessageToChat('assistant', data.response);
+            } else if (data.error) {
+                // Show error as system message
+                addMessageToChat('system', `Error: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            console.error('Chat error:', error);
+            removeTypingIndicator();
+            addMessageToChat('system', 'Error connecting to the assistant. Please try again later.');
+        })
+        .finally(() => {
+            // Re-enable send button
+            isWaitingForResponse = false;
+            sendChatBtn.disabled = false;
+        });
+    }
+
+    /**
+     * Add message to chat interface
+     * @param {string} role - Message role (user, assistant, system)
+     * @param {string} content - Message content
+     */
+    function addMessageToChat(role, content) {
+        // Create message element
+        const messageEl = document.createElement('div');
+        messageEl.className = `chat-message ${role}-message`;
+        messageEl.textContent = content;
+
+        // Add to chat container
+        chatMessages.appendChild(messageEl);
+
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Add to chat history if it's a user or assistant message
+        if (role === 'user' || role === 'assistant') {
+            chatHistory.push({ role, content });
+        }
+
+        // Show chat container if it's hidden
+        if (chatContainer.style.display === 'none' || !chatContainer.style.display) {
+            chatContainer.style.display = 'block';
+        }
+    }
+
+    /**
+     * Show typing indicator in chat
+     */
+    function showTypingIndicator() {
+        const typingEl = document.createElement('div');
+        typingEl.className = 'chat-typing';
+        typingEl.id = 'typingIndicator';
+
+        const indicatorEl = document.createElement('div');
+        indicatorEl.className = 'typing-indicator';
+
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'typing-dot';
+            indicatorEl.appendChild(dot);
+        }
+
+        typingEl.appendChild(indicatorEl);
+        chatMessages.appendChild(typingEl);
+
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    /**
+     * Remove typing indicator from chat
+     */
+    function removeTypingIndicator() {
+        const typingEl = document.getElementById('typingIndicator');
+        if (typingEl) {
+            typingEl.remove();
+        }
+    }
+    
+    // =============================================================================
+    // COMMAND INTERFACE FUNCTIONS
+    // =============================================================================
+
+    /**
+     * Sets up the command container toggle functionality
+     * Handles expanding/collapsing the command panel and persists state
+     */
+    function setupCommandToggle() {
+        const commandContent = document.getElementById('commandContent');
+        
+        if (!commandToggleIcon || !commandContent) return;
+        
+        // Set up the click handler
+        document.querySelector('.command-header .header-with-toggle').addEventListener('click', function() {
+            commandToggleIcon.textContent = commandToggleIcon.textContent === '▼' ? '►' : '▼';
+            commandContent.classList.toggle('collapsed');
+            
+            // Save the state to localStorage
+            const isCollapsed = commandContent.classList.contains('collapsed');
+            localStorage.setItem('commandsCollapsed', isCollapsed);
+        });
+        
+        // Initialize based on saved state
+        const savedState = localStorage.getItem('commandsCollapsed');
+        if (savedState === 'true') {
+            commandToggleIcon.textContent = '►';
+            commandContent.classList.add('collapsed');
+        }
+    }
+
+    /**
+     * Executes a command from the command input
+     * Handles API communication and command interpretation
+     */
+    function executeCommand() {
+        if (isExecutingCommand) return;
+        
+        const command = commandInput.value.trim();
+        if (!command) return;
+        
+        // Clear input
+        commandInput.value = '';
+        
+        // Add command to history UI
+        addToCommandHistory('user', command);
+        
+        // Set executing state
+        isExecutingCommand = true;
+        executeCommandBtn.disabled = true;
+        
+        // Show processing indicator
+        addToCommandHistory('system', 'Processing command...');
+        
+        // Get current application state for context
+        const appState = {
+            isAudioLoaded: !!audioElement.src,
+            isPlaying: isPlaying,
+            currentTime: audioElement.currentTime,
+            duration: audioElement.duration,
+            hasTranscript: segments.length > 0,
+            bookmarksCount: bookmarks.length,
+            fileName: currentFile ? currentFile.name : null,
+            fileId: fileId
+        };
+        
+        // Make API request to interpret command
+        fetch(`${API_URL}/interpret_command`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                command: command,
+                app_state: appState,
+                command_history: commands.slice(-5) // Send last 5 commands for context
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                addToCommandHistory('system', `Error: ${data.error}`);
                 return;
             }
             
-            // Disable button and show loading indicator
-            generateSummaryBtn.disabled = true;
-            noSummaryMessage.style.display = 'none';
-            summaryLoading.style.display = 'block';
+            // Show detected intent in history
+            addToCommandHistory('system', `Intent detected: ${data.intent}`);
             
-            // Compile all transcript text
-            let transcriptText = '';
-            segments.forEach(segment => {
-                transcriptText += segment.text + ' ';
-            });
-            
-            // Call the backend API
-            fetch(`${API_URL}/generate_summary`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    transcript_text: transcriptText.trim()
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Hide loading indicator
-                summaryLoading.style.display = 'none';
-                
-                if (data.summary) {
-                    // Display the summary
-                    summaryText.textContent = data.summary;
-                    summaryText.style.display = 'block';
-                    showMessage('Summary generated successfully');
+            // Execute the command based on the interpreted action
+            executeAction(data.action, data.parameters);
+        })
+        .catch(error => {
+            console.error('Command interpretation error:', error);
+            addToCommandHistory('system', 'Error interpreting command. Please try again.');
+        })
+        .finally(() => {
+            // Reset executing state
+            isExecutingCommand = false;
+            executeCommandBtn.disabled = false;
+        });
+    }
+
+    /**
+     * Executes a specific action based on interpreted command
+     * Main command dispatcher for all audio player actions
+     */
+    function executeAction(action, parameters) {
+        switch (action) {
+            case 'play':
+                if (audioElement.src) {
+                    audioElement.play();
+                    isPlaying = true;
+                    playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+                    addToCommandHistory('system', 'Playing audio');
                 } else {
-                    showMessage('Error: ' + data.error);
-                    noSummaryMessage.style.display = 'block';
+                    addToCommandHistory('system', 'No audio file loaded');
                 }
+                break;
                 
-                // Re-enable button
-                generateSummaryBtn.disabled = false;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showMessage('Error generating summary');
-                summaryLoading.style.display = 'none';
-                noSummaryMessage.style.display = 'block';
-                generateSummaryBtn.disabled = false;
-            });
-        }
-
-        function setupChatToggle() {
-            const toggleIcon = document.getElementById('toggleChat');
-            const chatContent = document.getElementById('chatContent');
-            
-            if (!toggleIcon || !chatContent) return;
-            
-            // Set up the click handler
-            document.querySelector('.chat-header .header-with-toggle').addEventListener('click', function() {
-                toggleIcon.textContent = toggleIcon.textContent === '▼' ? '►' : '▼';
-                chatContent.classList.toggle('collapsed');
-                
-                // Save the state to localStorage
-                const isCollapsed = chatContent.classList.contains('collapsed');
-                localStorage.setItem('chatCollapsed', isCollapsed);
-            });
-            
-            // Initialize based on saved state
-            const savedState = localStorage.getItem('chatCollapsed');
-            if (savedState === 'true') {
-                toggleIcon.textContent = '►';
-                chatContent.classList.add('collapsed');
-            }
-        }
-
-        // Function to send chat message
-        function sendChatMessage() {
-            if (isWaitingForResponse) return;
-            
-            const message = chatInput.value.trim();
-            if (!message) return;
-            
-            // Clear input
-            chatInput.value = '';
-            
-            // Add user message to UI
-            addMessageToChat('user', message);
-            
-            // Show typing indicator
-            showTypingIndicator();
-            
-            // Disable send button
-            isWaitingForResponse = true;
-            sendChatBtn.disabled = true;
-            
-            // Get relevant transcript context
-            let transcriptContext = '';
-            if (segments.length > 0) {
-                // Format segments for context
-                transcriptContext = segments.map(segment => 
-                    `[${formatTime(segment.start)} - ${formatTime(segment.end)}]: ${segment.text}`
-                ).join('\n');
-            }
-            
-            // Make API request
-            fetch(`${API_URL}/chat`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    query: message,
-                    transcript_context: transcriptContext,
-                    chat_history: chatHistory.slice(-10) // Send last 10 messages for context
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Remove typing indicator
-                removeTypingIndicator();
-                
-                if (data.response) {
-                    // Add assistant message to UI
-                    addMessageToChat('assistant', data.response);
-                } else if (data.error) {
-                    // Show error as system message
-                    addMessageToChat('system', `Error: ${data.error}`);
+            case 'pause':
+                if (audioElement.src) {
+                    audioElement.pause();
+                    isPlaying = false;
+                    playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+                    addToCommandHistory('system', 'Paused audio');
                 }
-            })
-            .catch(error => {
-                console.error('Chat error:', error);
-                removeTypingIndicator();
-                addMessageToChat('system', 'Error connecting to the assistant. Please try again later.');
-            })
-            .finally(() => {
-                // Re-enable send button
-                isWaitingForResponse = false;
-                sendChatBtn.disabled = false;
-            });
-        }
-
-        // Function to add message to chat
-        function addMessageToChat(role, content) {
-            // Create message element
-            const messageEl = document.createElement('div');
-            messageEl.className = `chat-message ${role}-message`;
-            messageEl.textContent = content;
-            
-            // Add to chat container
-            chatMessages.appendChild(messageEl);
-            
-            // Scroll to bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Add to chat history if it's a user or assistant message
-            if (role === 'user' || role === 'assistant') {
-                chatHistory.push({ role, content });
-            }
-            
-            // Show chat container if it's hidden
-            if (chatContainer.style.display === 'none' || !chatContainer.style.display) {
-                chatContainer.style.display = 'block';
-            }
-        }
-
-        // Function to show typing indicator
-        function showTypingIndicator() {
-            const typingEl = document.createElement('div');
-            typingEl.className = 'chat-typing';
-            typingEl.id = 'typingIndicator';
-            
-            const indicatorEl = document.createElement('div');
-            indicatorEl.className = 'typing-indicator';
-            
-            for (let i = 0; i < 3; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'typing-dot';
-                indicatorEl.appendChild(dot);
-            }
-            
-            typingEl.appendChild(indicatorEl);
-            chatMessages.appendChild(typingEl);
-            
-            // Scroll to bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Function to remove typing indicator
-        function removeTypingIndicator() {
-            const typingEl = document.getElementById('typingIndicator');
-            if (typingEl) {
-                typingEl.remove();
-            }
-        }
-
-        // Function to toggle command container visibility
-        function setupCommandToggle() {
-            const commandContent = document.getElementById('commandContent');
-            
-            if (!commandToggleIcon || !commandContent) return;
-            
-            // Set up the click handler
-            document.querySelector('.command-header .header-with-toggle').addEventListener('click', function() {
-                commandToggleIcon.textContent = commandToggleIcon.textContent === '▼' ? '►' : '▼';
-                commandContent.classList.toggle('collapsed');
+                break;
                 
-                // Save the state to localStorage
-                const isCollapsed = commandContent.classList.contains('collapsed');
-                localStorage.setItem('commandsCollapsed', isCollapsed);
-            });
-            
-            // Initialize based on saved state
-            const savedState = localStorage.getItem('commandsCollapsed');
-            if (savedState === 'true') {
-                commandToggleIcon.textContent = '►';
-                commandContent.classList.add('collapsed');
-            }
-        }
-        
-        // Function to execute the command
-        function executeCommand() {
-            if (isExecutingCommand) return;
-            
-            const command = commandInput.value.trim();
-            if (!command) return;
-            
-            // Clear input
-            commandInput.value = '';
-            
-            // Add command to history UI
-            addToCommandHistory('user', command);
-            
-            // Set executing state
-            isExecutingCommand = true;
-            executeCommandBtn.disabled = true;
-            
-            // Show processing indicator
-            addToCommandHistory('system', 'Processing command...');
-            
-            // Get current application state for context
-            const appState = {
-                isAudioLoaded: !!audioElement.src,
-                isPlaying: isPlaying,
-                currentTime: audioElement.currentTime,
-                duration: audioElement.duration,
-                hasTranscript: segments.length > 0,
-                bookmarksCount: bookmarks.length,
-                fileName: currentFile ? currentFile.name : null,
-                fileId: fileId
-            };
-            
-            // Make API request to interpret command
-            fetch(`${API_URL}/interpret_command`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    command: command,
-                    app_state: appState,
-                    command_history: commands.slice(-5) // Send last 5 commands for context
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    addToCommandHistory('system', `Error: ${data.error}`);
+            case 'seek':
+                if (audioElement.src) {
+                    let seekTime = 0;
+                    
+                    if (parameters.timeString) {
+                        // Convert time string (HH:MM:SS) to seconds
+                        const timeParts = parameters.timeString.split(':').map(Number);
+                        if (timeParts.length === 3) {
+                            seekTime = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
+                        } else if (timeParts.length === 2) {
+                            seekTime = timeParts[0] * 60 + timeParts[1];
+                        } else {
+                            seekTime = timeParts[0];
+                        }
+                    } else if (parameters.seconds !== undefined) {
+                        seekTime = parameters.seconds;
+                    } else if (parameters.percentage) {
+                        seekTime = audioElement.duration * (parameters.percentage / 100);
+                    }
+                    
+                    // Ensure time is within valid range
+                    seekTime = Math.min(Math.max(0, seekTime), audioElement.duration || 0);
+                    
+                    audioElement.currentTime = seekTime;
+                    addToCommandHistory('system', `Jumped to ${formatTime(seekTime)}`);
+                } else {
+                    addToCommandHistory('system', 'No audio file loaded');
+                }
+                break;
+                
+            case 'add_bookmark':
+                if (segments.length === 0) {
+                    addToCommandHistory('system', 'Please transcribe audio first before adding bookmarks');
                     return;
                 }
                 
-                // Show detected intent in history
-                addToCommandHistory('system', `Intent detected: ${data.intent}`);
+                // Use provided title or generate one
+                const bookmarkTitle = 'bookmark';
                 
-                // Execute the command based on the interpreted action
-                executeAction(data.action, data.parameters);
-            })
-            .catch(error => {
-                console.error('Command interpretation error:', error);
-                addToCommandHistory('system', 'Error interpreting command. Please try again.');
-            })
-            .finally(() => {
-                // Reset executing state
-                isExecutingCommand = false;
-                executeCommandBtn.disabled = false;
-            });
-        }
-        
-        // Function to execute an action based on the interpreted command
-        function executeAction(action, parameters) {
-            switch (action) {
-                case 'play':
-                    if (audioElement.src) {
-                        audioElement.play();
-                        isPlaying = true;
-                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
-                        addToCommandHistory('system', 'Playing audio');
-                    } else {
-                        addToCommandHistory('system', 'No audio file loaded');
-                    }
-                    break;
-                    
-                case 'pause':
-                    if (audioElement.src) {
-                        audioElement.pause();
-                        isPlaying = false;
-                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-                        addToCommandHistory('system', 'Paused audio');
-                    }
-                    break;
-                    
-                case 'seek':
-                    if (audioElement.src) {
-                        let seekTime = 0;
-                        
-                        if (parameters.timeString) {
-                            // Convert time string (HH:MM:SS) to seconds
-                            const timeParts = parameters.timeString.split(':').map(Number);
-                            if (timeParts.length === 3) {
-                                seekTime = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
-                            } else if (timeParts.length === 2) {
-                                seekTime = timeParts[0] * 60 + timeParts[1];
-                            } else {
-                                seekTime = timeParts[0];
-                            }
-                        } else if (parameters.seconds !== undefined) {
-                            seekTime = parameters.seconds;
-                        } else if (parameters.percentage) {
-                            seekTime = audioElement.duration * (parameters.percentage / 100);
-                        }
-                        
-                        // Ensure time is within valid range
-                        seekTime = Math.min(Math.max(0, seekTime), audioElement.duration || 0);
-                        
-                        audioElement.currentTime = seekTime;
-                        addToCommandHistory('system', `Jumped to ${formatTime(seekTime)}`);
-                    } else {
-                        addToCommandHistory('system', 'No audio file loaded');
-                    }
-                    break;
-                    
-                case 'add_bookmark':
-                    if (segments.length === 0) {
-                        addToCommandHistory('system', 'Please transcribe audio first before adding bookmarks');
-                        return;
-                    }
-                    
-                    // Use provided title or generate one
-                    const bookmarkTitle = 'bookmark';
-                    
-                    // Get current position
-                    const currentTime = audioElement.currentTime;
-                    const bookmarkId = Date.now();
-                    
-                    // Find relevant transcript text
-                    const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
-                    
-                    // Create and add bookmark
-                    const bookmark = {
-                        id: bookmarkId,
-                        time: currentTime,
-                        text: relevantText,
-                        timeFormatted: formatTime(currentTime),
-                        title: bookmarkTitle
-                    };
-                    
-                    bookmarks.push(bookmark);
-                    displayBookmarks();
-                    exportBookmarksBtn.disabled = bookmarks.length === 0;
-                    
-                    addToCommandHistory('system', `Added bookmark at ${formatTime(currentTime)}`);
-                    break;
-                    
-                case 'transcribe':
-                    if (!fileId) {
-                        addToCommandHistory('system', 'Please upload an audio file first');
-                        return;
-                    }
-                    
-                    // Call the existing transcribe function
-                    addToCommandHistory('system', 'Starting transcription process...');
-                    
-                    // Start transcription (reusing existing function)
-                    transcribeAudio();
-                    break;
-                    
-                case 'upload_prompt':
-                    // Just show a message instructing user to use file upload
-                    addToCommandHistory('system', 'To upload a file, click the "Select File" button or drag and drop an audio file to the upload area');
-                    break;
-                    
-                case 'export_transcript':
-                    if (segments.length === 0) {
-                        addToCommandHistory('system', 'No transcript available to export');
-                        return;
-                    }
-                    
-                    exportTranscript();
-                    addToCommandHistory('system', 'Transcript exported successfully');
-                    break;
-                    
-                case 'export_bookmarks':
-                    if (bookmarks.length === 0) {
-                        addToCommandHistory('system', 'No bookmarks to export');
-                        return;
-                    }
-                    
-                    exportBookmarks();
-                    addToCommandHistory('system', 'Bookmarks exported successfully');
-                    break;
-                    
-                case 'skip_forward':
-                    if (audioElement.src) {
-                        const skipAmount = parameters.seconds || 10; // Default to 10 seconds
-                        const newTime = Math.min(audioElement.currentTime + skipAmount, audioElement.duration);
-                        audioElement.currentTime = newTime;
-                        addToCommandHistory('system', `Skipped forward ${skipAmount} seconds`);
-                    } else {
-                        addToCommandHistory('system', 'No audio file loaded');
-                    }
-                    break;
-                    
-                case 'skip_backward':
-                    if (audioElement.src) {
-                        const skipAmount = parameters.seconds || 10; // Default to 10 seconds
-                        const newTime = Math.max(audioElement.currentTime - skipAmount, 0);
-                        audioElement.currentTime = newTime;
-                        addToCommandHistory('system', `Skipped backward ${skipAmount} seconds`);
-                    } else {
-                        addToCommandHistory('system', 'No audio file loaded');
-                    }
-                    break;
-                    
-                case 'change_playback_speed':
-                    if (audioElement.src) {
-                        const newSpeed = parameters.speed || 1.0;
-                        // Limit to reasonable range
-                        const limitedSpeed = Math.min(Math.max(0.25, newSpeed), 3.0);
-                        audioElement.playbackRate = limitedSpeed;
-                        addToCommandHistory('system', `Changed playback speed to ${limitedSpeed}x`);
-                    } else {
-                        addToCommandHistory('system', 'No audio file loaded');
-                    }
-                    break;
-                    
-                case 'find_in_transcript':
-                    if (segments.length === 0) {
-                        addToCommandHistory('system', 'No transcript available to search');
-                        return;
-                    }
-                    
-                    const searchTerm = parameters.searchTerm;
-                    if (!searchTerm) {
-                        addToCommandHistory('system', 'No search term provided');
-                        return;
-                    }
-                    
-                    const results = searchTranscript(searchTerm);
-                    if (results.length === 0) {
-                        addToCommandHistory('system', `No matches found for "${searchTerm}"`);
-                    } else {
-                        addToCommandHistory('system', `Found ${results.length} matches for "${searchTerm}"`);
-                        
-                        // If there's a specific occurrence requested
-                        if (parameters.occurrence && parameters.occurrence <= results.length) {
-                            const selectedResult = results[parameters.occurrence - 1];
-                            audioElement.currentTime = selectedResult.start;
-                            addToCommandHistory('system', `Jumped to occurrence ${parameters.occurrence} at ${formatTime(selectedResult.start)}`);
-                        } 
-                        // Otherwise, show the first few results
-                        else {
-                            const displayResults = results.slice(0, 3);
-                            displayResults.forEach((result, i) => {
-                                addToCommandHistory('system', `${i+1}. [${formatTime(result.start)}]: "${result.text}"`);
-                            });
-                            
-                            if (results.length > 3) {
-                                addToCommandHistory('system', `...and ${results.length - 3} more matches`);
-                            }
-                            
-                            // Jump to the first occurrence
-                            audioElement.currentTime = results[0].start;
-                            addToCommandHistory('system', `Jumped to first occurrence at ${formatTime(results[0].start)}`);
-                        }
-                    }
-                    break;
-                    
-                case 'help':
-                    showCommandHelp();
-                    break;
-                    
-                case 'unknown':
-                default:
-                    addToCommandHistory('system', 'Sorry, I don\'t understand that command. Type "help" to see available commands.');
-                    break;
-            }
-        }
-        
-        // Function to search transcript for a term
-        function searchTranscript(term) {
-            if (!term || segments.length === 0) return [];
-            
-            const results = [];
-            const termLower = term.toLowerCase();
-            
-            segments.forEach(segment => {
-                if (segment.text.toLowerCase().includes(termLower)) {
-                    results.push({
-                        start: segment.start,
-                        end: segment.end,
-                        text: segment.text
-                    });
+                // Get current position
+                const currentTime = audioElement.currentTime;
+                const bookmarkId = Date.now();
+                
+                // Find relevant transcript text
+                const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
+                
+                // Create and add bookmark
+                const bookmark = {
+                    id: bookmarkId,
+                    time: currentTime,
+                    text: relevantText,
+                    timeFormatted: formatTime(currentTime),
+                    title: bookmarkTitle
+                };
+                
+                bookmarks.push(bookmark);
+                displayBookmarks();
+                exportBookmarksBtn.disabled = bookmarks.length === 0;
+                
+                addToCommandHistory('system', `Added bookmark at ${formatTime(currentTime)}`);
+                break;
+                
+            case 'transcribe':
+                if (!fileId) {
+                    addToCommandHistory('system', 'Please upload an audio file first');
+                    return;
                 }
-            });
-            
-            return results;
+                
+                // Call the existing transcribe function
+                addToCommandHistory('system', 'Starting transcription process...');
+                
+                // Start transcription (reusing existing function)
+                transcribeAudio();
+                break;
+                
+            case 'upload_prompt':
+                // Just show a message instructing user to use file upload
+                addToCommandHistory('system', 'To upload a file, click the "Select File" button or drag and drop an audio file to the upload area');
+                break;
+                
+            case 'export_transcript':
+                if (segments.length === 0) {
+                    addToCommandHistory('system', 'No transcript available to export');
+                    return;
+                }
+                
+                exportTranscript();
+                addToCommandHistory('system', 'Transcript exported successfully');
+                break;
+                
+            case 'export_bookmarks':
+                if (bookmarks.length === 0) {
+                    addToCommandHistory('system', 'No bookmarks to export');
+                    return;
+                }
+                
+                exportBookmarks();
+                addToCommandHistory('system', 'Bookmarks exported successfully');
+                break;
+                
+            case 'skip_forward':
+                if (audioElement.src) {
+                    const skipAmount = parameters.seconds || 10; // Default to 10 seconds
+                    const newTime = Math.min(audioElement.currentTime + skipAmount, audioElement.duration);
+                    audioElement.currentTime = newTime;
+                    addToCommandHistory('system', `Skipped forward ${skipAmount} seconds`);
+                } else {
+                    addToCommandHistory('system', 'No audio file loaded');
+                }
+                break;
+                
+            case 'skip_backward':
+                if (audioElement.src) {
+                    const skipAmount = parameters.seconds || 10; // Default to 10 seconds
+                    const newTime = Math.max(audioElement.currentTime - skipAmount, 0);
+                    audioElement.currentTime = newTime;
+                    addToCommandHistory('system', `Skipped backward ${skipAmount} seconds`);
+                } else {
+                    addToCommandHistory('system', 'No audio file loaded');
+                }
+                break;
+                
+            case 'change_playback_speed':
+                if (audioElement.src) {
+                    const newSpeed = parameters.speed || 1.0;
+                    // Limit to reasonable range
+                    const limitedSpeed = Math.min(Math.max(0.25, newSpeed), 3.0);
+                    audioElement.playbackRate = limitedSpeed;
+                    addToCommandHistory('system', `Changed playback speed to ${limitedSpeed}x`);
+                } else {
+                    addToCommandHistory('system', 'No audio file loaded');
+                }
+                break;
+                
+            case 'find_in_transcript':
+                if (segments.length === 0) {
+                    addToCommandHistory('system', 'No transcript available to search');
+                    return;
+                }
+                
+                const searchTerm = parameters.searchTerm;
+                if (!searchTerm) {
+                    addToCommandHistory('system', 'No search term provided');
+                    return;
+                }
+                
+                const results = searchTranscript(searchTerm);
+                if (results.length === 0) {
+                    addToCommandHistory('system', `No matches found for "${searchTerm}"`);
+                } else {
+                    addToCommandHistory('system', `Found ${results.length} matches for "${searchTerm}"`);
+                    
+                    // If there's a specific occurrence requested
+                    if (parameters.occurrence && parameters.occurrence <= results.length) {
+                        const selectedResult = results[parameters.occurrence - 1];
+                        audioElement.currentTime = selectedResult.start;
+                        addToCommandHistory('system', `Jumped to occurrence ${parameters.occurrence} at ${formatTime(selectedResult.start)}`);
+                    } else {
+                        // Otherwise, show the first few results
+                        const displayResults = results.slice(0, 3);
+                        displayResults.forEach((result, i) => {
+                            addToCommandHistory('system', `${i+1}. [${formatTime(result.start)}]: "${result.text}"`);
+                        });
+                        
+                        if (results.length > 3) {
+                            addToCommandHistory('system', `...and ${results.length - 3} more matches`);
+                        }
+                        
+                        // Jump to the first occurrence
+                        audioElement.currentTime = results[0].start;
+                        addToCommandHistory('system', `Jumped to first occurrence at ${formatTime(results[0].start)}`);
+                    }
+                }
+                break;
+                
+            case 'help':
+                showCommandHelp();
+                break;
+                
+            case 'unknown':
+            default:
+                addToCommandHistory('system', 'Sorry, I don\'t understand that command. Type "help" to see available commands.');
+                break;
+        }
+    }
+
+    /**
+     * Searches the transcript for a specific term
+     * Returns array of matching segments with timing information
+     */
+    function searchTranscript(term) {
+        if (!term || segments.length === 0) return [];
+        
+        const results = [];
+        const termLower = term.toLowerCase();
+        
+        segments.forEach(segment => {
+            if (segment.text.toLowerCase().includes(termLower)) {
+                results.push({
+                    start: segment.start,
+                    end: segment.end,
+                    text: segment.text
+                });
+            }
+        });
+        
+        return results;
+    }
+
+    /**
+     * Displays command help information
+     * Shows available commands and their descriptions
+     */
+    function showCommandHelp() {
+        const helpCommands = [
+            "🎮 Available Commands:",
+            "- Play/pause the audio",
+            "- Seek to [time] (e.g., 'go to 2:30')",
+            "- Skip forward/backward [seconds]",
+            "- Add bookmark [title]",
+            "- Transcribe this audio",
+            "- Export transcript/bookmarks",
+            "- Change speed to [0.5-3x]",
+            "- Find '[word/phrase]' in transcript",
+            "- Help (shows this message)"
+        ];
+        
+        helpCommands.forEach(cmd => {
+            addToCommandHistory('system', cmd);
+        });
+    }
+
+    /**
+     * Adds a message to the command history display
+     * Handles both user commands and system responses
+     */
+    function addToCommandHistory(role, content) {
+        // Create history item element
+        const historyItem = document.createElement('div');
+        historyItem.className = `command-item ${role}-command`;
+        
+        // For user commands, add a prefix
+        if (role === 'user') {
+            const prefix = document.createElement('span');
+            prefix.className = 'command-prefix';
+            prefix.textContent = '> ';
+            historyItem.appendChild(prefix);
         }
         
-        // Function to show command help
-        function showCommandHelp() {
-            const helpCommands = [
-                "🎮 Available Commands:",
-                "- Play/pause the audio",
-                "- Seek to [time] (e.g., 'go to 2:30')",
-                "- Skip forward/backward [seconds]",
-                "- Add bookmark [title]",
-                "- Transcribe this audio",
-                "- Export transcript/bookmarks",
-                "- Change speed to [0.5-3x]",
-                "- Find '[word/phrase]' in transcript",
-                "- Help (shows this message)"
-            ];
-            
-            helpCommands.forEach(cmd => {
-                addToCommandHistory('system', cmd);
-            });
-        }
+        const contentSpan = document.createElement('span');
+        contentSpan.textContent = content;
+        historyItem.appendChild(contentSpan);
         
-        // Function to add message to command history
-        function addToCommandHistory(role, content) {
-            // Create history item element
-            const historyItem = document.createElement('div');
-            historyItem.className = `command-item ${role}-command`;
-            
-            // For user commands, add a prefix
-            if (role === 'user') {
-                const prefix = document.createElement('span');
-                prefix.className = 'command-prefix';
-                prefix.textContent = '> ';
-                historyItem.appendChild(prefix);
-            }
-            
-            const contentSpan = document.createElement('span');
-            contentSpan.textContent = content;
-            historyItem.appendChild(contentSpan);
-            
-            // Add to history container
-            commandHistory.appendChild(historyItem);
-            
-            // Scroll to bottom
-            commandHistory.scrollTop = commandHistory.scrollHeight;
-            
-            // Add to commands history if it's a user command
-            if (role === 'user') {
-                commands.push(content);
-            }
+        // Add to history container
+        commandHistory.appendChild(historyItem);
+        
+        // Scroll to bottom
+        commandHistory.scrollTop = commandHistory.scrollHeight;
+        
+        // Add to commands history if it's a user command
+        if (role === 'user') {
+            commands.push(content);
         }
+    }
 
+    // =============================================================================
+    // NOTES MANAGEMENT FUNCTIONS
+    // =============================================================================
 
-    // Function to add a new note
+    /**
+     * Adds a new note with user-provided title
+     * Prompts for title and creates empty note for editing
+     */
     function addNewNote() {
         const title = prompt('Enter a title for your note:', 'Note') || 'Note';
         createNote(title, '');
     }
 
-    // Create a new note with title and optional initial content
+    /**
+     * Creates a new note with specified title and content
+     * Adds to notes array and updates display
+     */
     function createNote(title, content = '') {
         const noteId = Date.now(); // Unique ID for the note
         
@@ -1729,7 +1869,10 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Note added');
     }
 
-    // Display all notes
+    /**
+     * Displays all notes in the notes container
+     * Sorts by timestamp and creates interactive note elements
+     */
     function displayNotes() {
         // Clear current notes display
         notesContent.innerHTML = '';
@@ -1792,7 +1935,10 @@ document.addEventListener('DOMContentLoaded', function() {
         notesContainer.style.display = 'block';
     }
 
-    // Edit a note
+    /**
+     * Puts a note into edit mode
+     * Replaces content with textarea and adds save/cancel buttons
+     */
     function editNote(id) {
         const noteEl = document.querySelector(`.note-item[data-id="${id}"]`);
         if (!noteEl) return;
@@ -1842,7 +1988,10 @@ document.addEventListener('DOMContentLoaded', function() {
         textarea.focus();
     }
 
-    // Save note edit
+    /**
+     * Saves changes to a note being edited
+     * Updates note content and timestamp, refreshes display
+     */
     function saveNoteEdit(id, newContent) {
         // Update note object
         const note = notes.find(note => note.id.toString() === id.toString());
@@ -1856,7 +2005,10 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Note updated');
     }
 
-    // Delete a note
+    /**
+     * Deletes a note after confirmation
+     * Removes from notes array and updates display
+     */
     function deleteNote(id) {
         if (confirm('Are you sure you want to delete this note?')) {
             // Filter out the note with the given id
@@ -1868,7 +2020,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Clear all notes
+    /**
+     * Clears all notes after confirmation
+     * Empties notes array and updates display
+     */
     function clearNotes() {
         if (notes.length === 0) return;
         
@@ -1879,7 +2034,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Export notes
+    /**
+     * Exports notes in specified format
+     * Supports JSONL, text, and summary formats
+     */
     function exportNotes(format) {
         if (notes.length === 0) {
             showMessage('No notes to export');
@@ -1902,7 +2060,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Export notes as JSONL
+    /**
+     * Exports notes as JSONL format
+     * One JSON object per line for structured data processing
+     */
     function exportNotesAsJsonl(audioName) {
         // Prepare data for export
         let jsonlContent = '';
@@ -1930,7 +2091,10 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Notes exported as JSONL');
     }
 
-    // Export notes as plain text
+    /**
+     * Exports notes as plain text format
+     * Human-readable format with headers and timestamps
+     */
     function exportNotesAsText(audioName) {
         // Prepare data for export
         let textContent = `Notes for: ${currentFile ? currentFile.name : "Unknown audio"}\n`;
@@ -1950,7 +2114,10 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Notes exported as text');
     }
 
-    // Export notes as a summary (post-processed)
+    /**
+     * Exports notes as a markdown summary
+     * Organized by topics with table of contents
+     */
     function exportNotesAsSummary(audioName) {
         // Prepare data for export
         let summaryContent = `# Notes Summary for: ${currentFile ? currentFile.name : "Unknown audio"}\n\n`;
@@ -1997,7 +2164,10 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Notes exported as summary');
     }
 
-    // Helper function for file downloads
+    /**
+     * Helper function for creating and downloading files
+     * Creates blob and triggers download with specified filename and mime type
+     */
     function downloadFile(content, filename, mimeType) {
         const blob = new Blob([content], { type: mimeType });
         const url = URL.createObjectURL(blob);
@@ -2016,7 +2186,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     }
 
-    // Function to toggle the notes visibility
+    /**
+     * Sets up the notes container toggle functionality
+     * Handles expanding/collapsing the notes panel and persists state
+     */
     function setupNotesToggle() {
         const toggleIcon = document.getElementById('toggleNotes');
         
@@ -2040,8 +2213,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-
-    // Initialize the notes container on page load
+    /**
+     * Initializes the notes container on page load
+     * Sets up empty notes display and prepares for file loading
+     */
     function initializeNotesContainer() {
         // This is called after DOM is loaded
         // Display empty notes container
@@ -2051,8 +2226,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // (This can be added in the uploadFile function)
     }
 
+    // =============================================================================
+    // CHAT FUNCTIONS
+    // =============================================================================
 
-
+    /**
+     * Adds a message to the chat interface
+     * Handles different message types and provides save-to-notes functionality
+     */
     function addMessageToChat(role, content) {
         // Create message element
         const messageEl = document.createElement('div');
@@ -2104,7 +2285,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Function to save a chat message to notes
+    /**
+     * Saves a chat message to the notes system
+     * Creates a note with abbreviated title from message content
+     */
     function saveMessageToNotes(content) {
         // Create a title based on the first few words
         let titleWords = content.split(' ').slice(0, 4).join(' ');
@@ -2118,8 +2302,10 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Chat message saved to notes');
     }
 
-
-    // Function to reset chat history
+    /**
+     * Resets the chat history
+     * Clears all messages except initial system message
+     */
     function resetChat() {
         // Clear the chat history array
         chatHistory = [];
@@ -2131,74 +2317,125 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Chat history has been reset');
     }
 
+    // =============================================================================
+    // PUSH-TO-TALK VOICE RECOGNITION MODULE
+    // =============================================================================
 
+    // -----------------------------------------------------------------------------
+    // Core PTT Recording Functions
+    // -----------------------------------------------------------------------------
 
-    // Function to start Push-to-Talk recording
+    /**
+     * Starts Push-to-Talk recording session
+     * Handles microphone access, audio recording, and UI state management
+     */
     async function startPtt() {
-         if (isRecording) return; // Prevent multiple recordings
+        if (isRecording) return; // Prevent multiple recordings
 
-         isRecording = true;
-         pttButton.classList.add('recording');
-         pttTranscriptDisplay.textContent = 'Listening...'; // Clear previous transcript
-         showMessage('Recording started. Release button to stop.');
+        isRecording = true;
+        pttButton.classList.add('recording');
+        pttTranscriptDisplay.textContent = 'Listening...';
+        showMessage('Recording started. Release button to stop.');
 
-         // Pause the audio player
-         // Track if audio was playing before PTT and pause it
-         wasPlayingBeforePTT = isPlaying;
-         if (isPlaying) {
+        // Pause current audio playback if active
+        pauseAudioForPTT();
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            // Set up recording event handlers
+            setupRecordingEventHandlers(stream);
+
+            mediaRecorder.start();
+        } catch (error) {
+            handleMicrophoneError(error);
+        }
+    }
+
+    /**
+     * Stops Push-to-Talk recording and processes the audio
+     * Triggers transcription and optionally resumes audio playback
+     */
+    function stopPtt() {
+        if (!isRecording) return;
+
+        isRecording = false;
+        clearTimeout(recognitionTimeout);
+        pttButton.classList.remove('recording');
+        showMessage('Recording stopped. Processing transcription...');
+
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+        }
+
+        // Resume audio playback after processing delay
+        scheduleAudioResume();
+    }
+
+    // -----------------------------------------------------------------------------
+    // Audio Recording Event Handlers
+    // -----------------------------------------------------------------------------
+
+    /**
+     * Sets up MediaRecorder event handlers for audio processing
+     * @param {MediaStream} stream - The audio stream to manage
+     */
+    function setupRecordingEventHandlers(stream) {
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+            pttButton.classList.remove('recording');
+            pttTranscriptDisplay.textContent = 'Processing...';
+
+            // Send audio for speech recognition
+            await sendAudioForRecognition(audioBlob);
+
+            // Release microphone resources
+            stream.getTracks().forEach(track => track.stop());
+        };
+    }
+
+    /**
+     * Handles microphone access errors
+     * @param {Error} error - The error object from getUserMedia
+     */
+    function handleMicrophoneError(error) {
+        console.error('Error accessing microphone:', error);
+        showMessage('Error accessing microphone. Please allow microphone access.');
+        pttButton.classList.remove('recording');
+        isRecording = false;
+        pttTranscriptDisplay.textContent = 'Microphone access denied or error.';
+    }
+
+    // -----------------------------------------------------------------------------
+    // Audio Playback Management
+    // -----------------------------------------------------------------------------
+
+    /**
+     * Pauses current audio playback when PTT is activated
+     * Tracks playback state for later resumption
+     */
+    function pauseAudioForPTT() {
+        wasPlayingBeforePTT = isPlaying;
+        if (isPlaying) {
             audioElement.pause();
             playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
             isPlaying = false;
-            }
+        }
+    }
 
-         try {
-             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-             mediaRecorder = new MediaRecorder(stream);
-             audioChunks = [];
-
-             mediaRecorder.ondataavailable = event => {
-                 audioChunks.push(event.data);
-             };
-
-             mediaRecorder.onstop = async () => {
-                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                 // const audioUrl = URL.createObjectURL(audioBlob); // For debugging
-                 // console.log('Recorded audio URL:', audioUrl); // For debugging
-                 
-                 pttButton.classList.remove('recording');
-                 pttTranscriptDisplay.textContent = 'Processing...';
-
-                 // Send to backend for Azure Speech Recognition
-                 await sendAudioForRecognition(audioBlob);
-                 
-                 // Stop all tracks on the stream to release microphone
-                 stream.getTracks().forEach(track => track.stop());
-             };
-
-             mediaRecorder.start();
-         } catch (error) {
-             console.error('Error accessing microphone:', error);
-             showMessage('Error accessing microphone. Please allow microphone access.');
-             pttButton.classList.remove('recording');
-             isRecording = false;
-             pttTranscriptDisplay.textContent = 'Microphone access denied or error.';
-         }
-     }
-
-     // Function to stop Push-to-Talk recording
-     function stopPtt() {
-         if (!isRecording) return;
-
-         isRecording = false;
-         clearTimeout(recognitionTimeout); // Clear any pending recognition timeouts
-         pttButton.classList.remove('recording');
-         showMessage('Recording stopped. Processing transcription...');
-
-         if (mediaRecorder && mediaRecorder.state === 'recording') {
-             mediaRecorder.stop();
-         }
-         // Resume audio after 1.5 seconds only if it was playing before PTT
-         setTimeout(() => {
+    /**
+     * Schedules audio playback resumption after PTT processing
+     * Only resumes if audio was playing before PTT activation
+     */
+    function scheduleAudioResume() {
+        setTimeout(() => {
             if (wasPlayingBeforePTT && audioElement.src) {
                 audioElement.play();
                 playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
@@ -2206,63 +2443,105 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Reset the flag
             wasPlayingBeforePTT = false;
-         }, 900);
-     }
+        }, 900);
+    }
 
-     // Function to send audio blob to backend for speech recognition
-     async function sendAudioForRecognition(audioBlob) {
-         const formData = new FormData();
-         formData.append('audio', audioBlob, 'audio.webm');
-         formData.append('language', languageSelect.value); // Send selected language
+    // -----------------------------------------------------------------------------
+    // Speech Recognition & API Communication
+    // -----------------------------------------------------------------------------
 
-         try {
-             const response = await fetch(`${API_URL}/recognize_speech`, {
-                 method: 'POST',
-                 body: formData
-             });
+    /**
+     * Sends recorded audio blob to backend for speech recognition
+     * @param {Blob} audioBlob - The recorded audio data
+     */
+    async function sendAudioForRecognition(audioBlob) {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'audio.webm');
+        formData.append('language', languageSelect.value);
 
-             const data = await response.json();
+        try {
+            const response = await fetch(`${API_URL}/recognize_speech`, {
+                method: 'POST',
+                body: formData
+            });
 
-             if (data.transcript) {
-                 pttTranscriptDisplay.textContent = data.transcript;
-                 showMessage('Transcription received!');
-                 // Optionally, add the transcript to the command input directly
-                 commandInput.value = data.transcript;
+            const data = await response.json();
 
-                 // Auto-execute the command
-                 executeCommandFromTranscript(data.transcript);
+            if (data.transcript) {
+                handleSuccessfulTranscription(data.transcript);
+            } else {
+                handleTranscriptionError(data.error);
+            }
+        } catch (error) {
+            handleNetworkError(error);
+        }
+    }
 
-             } else {
-                 pttTranscriptDisplay.textContent = 'No transcript or error.';
-                 showMessage('Error: ' + (data.error || 'Unknown transcription error.'));
-             }
-         } catch (error) {
-             console.error('Error sending audio for recognition:', error);
-             pttTranscriptDisplay.textContent = 'Error communicating with speech service.';
-             showMessage('Network error or speech service issue.');
-         }
-     }
+    /**
+     * Handles successful speech transcription
+     * @param {string} transcript - The transcribed text
+     */
+    function handleSuccessfulTranscription(transcript) {
+        pttTranscriptDisplay.textContent = transcript;
+        showMessage('Transcription received!');
+        commandInput.value = transcript;
 
-    
-     // New function to execute command from transcript
-     function executeCommandFromTranscript(transcript) {
+        // Auto-execute the transcribed command
+        executeCommandFromTranscript(transcript);
+    }
+
+    /**
+     * Handles transcription errors from the API
+     * @param {string} error - The error message from the API
+     */
+    function handleTranscriptionError(error) {
+        pttTranscriptDisplay.textContent = 'No transcript or error.';
+        showMessage('Error: ' + (error || 'Unknown transcription error.'));
+    }
+
+    /**
+     * Handles network errors during transcription
+     * @param {Error} error - The network error object
+     */
+    function handleNetworkError(error) {
+        console.error('Error sending audio for recognition:', error);
+        pttTranscriptDisplay.textContent = 'Error communicating with speech service.';
+        showMessage('Network error or speech service issue.');
+    }
+
+    // -----------------------------------------------------------------------------
+    // Command Execution & Processing
+    // -----------------------------------------------------------------------------
+
+    /**
+     * Executes a command derived from voice transcript
+     * Handles command interpretation and execution flow
+     * @param {string} transcript - The transcribed voice command
+     */
+    function executeCommandFromTranscript(transcript) {
         if (isExecutingCommand) return;
-        
+
         const command = transcript.trim();
         if (!command) return;
-        
-        // Add command to history UI
+
+        // Update UI and state
         addToCommandHistory('user', command);
-        
-        // Set executing state
-        isExecutingCommand = true;
-        executeCommandBtn.disabled = true;
-        
-        // Show processing indicator
+        setExecutingState(true);
         addToCommandHistory('system', 'Processing voice command...');
-        
-        // Get current application state for context
-        const appState = {
+
+        // Prepare application context
+        const appState = buildApplicationState();
+
+        // Send command for interpretation
+        interpretCommand(command, appState);
+    }
+
+    /**
+     * Builds current application state for command context
+     * @returns {Object} Current application state object
+     */
+    function buildApplicationState() {
+        return {
             isAudioLoaded: !!audioElement.src,
             isPlaying: isPlaying,
             currentTime: audioElement.currentTime,
@@ -2272,8 +2551,14 @@ document.addEventListener('DOMContentLoaded', function() {
             fileName: currentFile ? currentFile.name : null,
             fileId: fileId
         };
-        
-        // Make API request to interpret command
+    }
+
+    /**
+     * Sends command to backend for interpretation
+     * @param {string} command - The voice command to interpret
+     * @param {Object} appState - Current application state
+     */
+    function interpretCommand(command, appState) {
         fetch(`${API_URL}/interpret_command`, {
             method: 'POST',
             headers: {
@@ -2282,49 +2567,68 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 command: command,
                 app_state: appState,
-                command_history: commands.slice(-5) // Send last 5 commands for context
+                command_history: commands.slice(-5) // Last 5 commands for context
             })
         })
         .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                addToCommandHistory('system', `Error: ${data.error}`);
-                return;
-            }
-            
-            // Show detected intent in history
-            addToCommandHistory('system', `Voice command detected: ${data.intent}`);
-            
-            // Execute the command based on the interpreted action
-            executeAction(data.action, data.parameters);
-            
-            // Clear the command input after execution
-            setTimeout(() => {
-                commandInput.value = '';
-            }, 2000); // Clear after 2 seconds for visual feedback
-        })
-        .catch(error => {
-            console.error('Command interpretation error:', error);
-            addToCommandHistory('system', 'Error interpreting voice command. Please try again.');
-        })
-        .finally(() => {
-            // Reset executing state
-            isExecutingCommand = false;
-            executeCommandBtn.disabled = false;
-        });
+        .then(data => handleCommandResponse(data))
+        .catch(error => handleCommandError(error))
+        .finally(() => setExecutingState(false));
     }
 
-     // This is a placeholder for future wake-up word integration.
-     // The structure for startPtt and stopPtt allows for easy replacement
-     // of button events with wake-up word detection events.
-     function setupWakeWordDetection() {
-         // In a real scenario, this would involve a library or service
-         // that listens for a wake-up word and triggers startPtt()
-         // when detected, and potentially stopPtt() after a period of silence.
-         console.log("Wake-up word detection not implemented yet. Using PTT.");
-     }
-     // Call this if you were to enable wake word detection
-     // setupWakeWordDetection();
+    /**
+     * Handles successful command interpretation response
+     * @param {Object} data - Response data from command interpretation
+     */
+    function handleCommandResponse(data) {
+        if (data.error) {
+            addToCommandHistory('system', `Error: ${data.error}`);
+            return;
+        }
 
+        // Show detected intent and execute action
+        addToCommandHistory('system', `Voice command detected: ${data.intent}`);
+        executeAction(data.action, data.parameters);
 
-    });
+        // Clear command input after delay for visual feedback
+        setTimeout(() => {
+            commandInput.value = '';
+        }, 2000);
+    }
+
+    /**
+     * Handles command interpretation errors
+     * @param {Error} error - The error object
+     */
+    function handleCommandError(error) {
+        console.error('Command interpretation error:', error);
+        addToCommandHistory('system', 'Error interpreting voice command. Please try again.');
+    }
+
+    /**
+     * Sets the command execution state and updates UI
+     * @param {boolean} isExecuting - Whether a command is currently executing
+     */
+    function setExecutingState(isExecuting) {
+        isExecutingCommand = isExecuting;
+        executeCommandBtn.disabled = isExecuting;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Future Enhancement Placeholder
+    // -----------------------------------------------------------------------------
+
+    /**
+     * Placeholder for wake-up word detection integration
+     * Structure allows for easy replacement of button events with wake-word detection
+     */
+    function setupWakeWordDetection() {
+        // Future implementation would integrate with wake-word detection library
+        // and trigger startPtt() when wake-word is detected
+        console.log("Wake-up word detection not implemented yet. Using PTT.");
+    }
+
+    // Uncomment to enable wake word detection when implemented
+    // setupWakeWordDetection();
+
+});
