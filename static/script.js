@@ -656,7 +656,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // NEW: Generate AI comments for bookmark
-    function generateBookmarkComments(id) {
+    // Load prompt template from file or fallback to default
+    async function loadPromptTemplate() {
+        try {
+            const response = await fetch('prompts/smart_bookmark.txt');
+            if (response.ok) {
+                return await response.text();
+            }
+        } catch (error) {
+            console.warn('Could not load prompt file, using default:', error);
+        }
+        
+        // Fallback to default prompt
+        return `Generate a brief, insightful comment about this audio transcript segment. Focus on key points, themes, or important information. Keep it concise (1-2 sentences):
+
+    "{{bookmark_text}}"`;
+    }
+
+    async function generateBookmarkComments(id) {
         const bookmark = bookmarks.find(b => b.id === id);
         if (!bookmark) return;
         
@@ -666,21 +683,26 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading indicator
         commentsEl.innerHTML = '<div class="loading-indicator"><div class="loading-spinner"></div><p>Generating comments...</p></div>';
         
-        // Prepare prompt for GPT
-        const prompt = `Generate a brief, insightful comment about this audio transcript segment. Focus on key points, themes, or important information. Keep it concise (1-2 sentences):\n\n"${bookmark.text}"`;
-        
-        // Make API call
-        fetch(`${API_URL}/generate_summary`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                transcript_text: prompt
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
+        try {
+            // Load prompt from file
+            const promptTemplate = await loadPromptTemplate();
+            
+            // Replace placeholder with actual bookmark text
+            const prompt = promptTemplate.replace('{{bookmark_text}}', bookmark.text);
+            
+            // Make API call
+            const response = await fetch(`${API_URL}/generate_summary`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    transcript_text: prompt
+                })
+            });
+            
+            const data = await response.json();
+            
             if (data.summary) {
                 // Update bookmark with generated comments
                 bookmark.comments = data.summary;
@@ -690,12 +712,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 showMessage('Error generating comments: ' + data.error);
                 displayBookmarks();
             }
-        })
-        .catch(error => {
+        } catch (error) {
             console.error('Error:', error);
-            showMessage('Error generating comments');
+            showMessage('Error generating comments: ' + error.message);
             displayBookmarks();
-        });
+        }
     }
 
     // NEW: Copy bookmark to note (modified to include comments)
