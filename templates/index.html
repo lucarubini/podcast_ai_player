@@ -8,59 +8,59 @@
 </head>
 <body>
     <div class="container">
+        <!-- Main Title -->
         <h1>Audio Player with Transcription</h1>
         
-        <!-- Upload Container -->
+        <!-- File Upload Section -->
         <div id="uploadContainer" class="upload-container">
             <p>Upload your audio file</p>
             <p>or drag and drop it here</p>
             <input type="file" id="fileInput" class="file-input" accept="audio/*" />
             <button class="btn" id="uploadBtn">Select File</button>
         </div>
-        <!-- Upload Container -->
-       
 
-        <!-- Player Container -->
+        <!-- Audio Player Section -->
         <div id="playerContainer" class="player-container">
+            <!-- Audio file information display -->
             <div class="audio-info" id="audioInfo">No file selected</div>
             
+            <!-- Playback controls -->
             <div class="controls">
                 <button class="play-pause-btn" id="playPauseBtn">
+                    <!-- Play icon SVG -->
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="5 3 19 12 5 21 5 3"></polygon>
                     </svg>
                 </button>
+                
+                <!-- Time display -->
                 <div class="time-display">
                     <span id="currentTime">00:00:00</span> / <span id="totalTime">00:00:00</span>
                 </div>
             </div>
             
+            <!-- Progress bar -->
             <div class="progress-container" id="progressContainer">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
         </div>
-        <!-- Player Container -->
 
-
-        <!-- Main buttons -->
+        <!-- Main Action Buttons -->
         <div class="button-container">
             <button class="btn btn-success" id="transcribeBtn">Transcribe Audio</button>
             <button class="btn" id="importBtn">Import Transcript</button>
             <button class="btn btn-bookmark" id="bookmarkBtn" disabled>Add Bookmark</button>
+            <!-- Hidden file input for transcript import -->
             <input type="file" id="transcriptFileInput" accept="application/json" style="display: none;" />
         </div>
-        <!-- Main buttons -->
 
-        
-        <!-- Loading -->
+        <!-- Loading Indicator -->
         <div class="loading-indicator" id="loadingIndicator">
             <div class="loading-spinner"></div>
             <p>Transcribing your audio...</p>
         </div>
-        <!-- Loading -->
 
-
-        <!-- Text Prompt commands -->
+        <!-- Command Prompt Section -->
         <div class="command-container" id="commandContainer">
             <div class="command-header">
                 <div class="header-with-toggle">
@@ -68,14 +68,20 @@
                     <span>Command Prompt</span>
                 </div>
             </div>
+            
             <div id="commandContent" class="command-content">
+                <!-- Command input area -->
                 <div class="command-input-container">
                     <textarea id="commandInput" class="command-input" placeholder="Type a command or use PTT..."></textarea>
+                    
+                    <!-- Execute command button -->
                     <button class="btn-execute" id="executeCommandBtn" title="Execute Command">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>
                     </button>
+                    
+                    <!-- Push-to-talk button -->
                     <button id="pttButton" class="btn btn-primary" title="Push to Talk">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -84,6 +90,8 @@
                             <line x1="8" y1="23" x2="16" y2="23"></line>
                         </svg>
                     </button>
+                    
+                    <!-- Language selection dropdown -->
                     <select id="languageSelect" class="language-select" title="Select Language">
                         <option value="en-US">English (US)</option>
                         <option value="es-ES">Spanish (Spain)</option>
@@ -91,15 +99,17 @@
                         <option value="de-DE">German (Germany)</option>
                         <option value="it-IT">Italian (Italy)</option>
                     </select>
-                    </div>
+                </div>
+                
+                <!-- PTT transcript display area -->
                 <div id="pttTranscriptDisplay" class="ptt-transcript-display"></div>
-                <div class="command-history" id="commandHistory">
-                    </div>
+                
+                <!-- Command history display -->
+                <div class="command-history" id="commandHistory"></div>
             </div>
         </div>
 
-
-        <!-- Transcription -->
+        <!-- Transcription Section -->
         <div class="transcription-container" id="transcriptionContainer">
             <div class="transcription-header">
                 <div class="header-with-toggle">
@@ -108,11 +118,12 @@
                 </div>
                 <button class="btn" id="exportBtn" disabled>Export Transcript</button>
             </div>
+            
+            <!-- Transcription content area -->
             <div id="transcriptionContent" class="transcription-content"></div>
         </div>
-           
 
-        <!-- Summary -->
+        <!-- Summary Section -->
         <div id="summaryContainer" class="summary-container">
             <div class="summary-header">
                 <div class="header-with-toggle">
@@ -121,9 +132,15 @@
                 </div>
                 <button class="btn btn-primary" id="generateSummaryBtn" disabled>Generate Summary</button>
             </div>
+            
             <div id="summaryContent" class="summary-content">
+                <!-- Default message when no summary is generated -->
                 <div class="no-summary" id="noSummaryMessage">No summary generated yet</div>
+                
+                <!-- Summary text display -->
                 <div id="summaryText" class="summary-text" style="display: none;"></div>
+                
+                <!-- Summary generation loading indicator -->
                 <div id="summaryLoading" class="loading-indicator" style="display: none;">
                     <div class="loading-spinner"></div>
                     <p>Generating summary...</p>
@@ -131,66 +148,78 @@
             </div>
         </div>
 
-
-        <!-- Bookmarks -->
+        <!-- Bookmarks Section -->
         <div class="bookmarks-container" id="bookmarksContainer">
             <div class="bookmarks-header">
                 <div class="header-with-toggle">
                     <span class="toggle-icon" id="toggleBookmarks">▼</span>
                     <span>Bookmarks</span>
                 </div>
+                
+                <!-- Bookmark action buttons -->
                 <div>
                     <button class="btn btn-danger btn-sm" id="clearBookmarksBtn">Clear All</button>
                     <button class="btn btn-success btn-sm" id="exportBookmarksBtn" disabled>Export JSONL</button>
                 </div>
             </div>
+            
             <div id="bookmarksContent" class="bookmarks-content">
+                <!-- Default message when no bookmarks exist -->
                 <div class="no-bookmarks" id="noBookmarksMessage">No bookmarks yet</div>
             </div>
         </div>
 
-
-        <!-- Chat -->
+        <!-- Chat Section -->
         <div class="chat-container" id="chatContainer">
             <div class="chat-header">
                 <div class="header-with-toggle">
                     <span class="toggle-icon" id="toggleChat">▼</span>
                     <span>Chat with Transcript</span>
                 </div>
+                
+                <!-- Chat controls -->
                 <div>
                     <button class="btn btn-danger btn-sm" id="resetChatBtn">Reset Chat</button>
                 </div>
             </div>
-                <div id="chatContent" class="chat-content">
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="chat-message system-message">
-                            Ask questions about the transcript or request analysis.
-                        </div>
-                    </div>
-                    <div class="chat-input-container">
-                        <textarea id="chatInput" class="chat-input" placeholder="Type your message here..." rows="2"></textarea>
-                        <button id="sendChatBtn" class="btn btn-send">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                            </svg>
-                        </button>
+            
+            <div id="chatContent" class="chat-content">
+                <!-- Chat messages area -->
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message system-message">
+                        Ask questions about the transcript or request analysis.
                     </div>
                 </div>
+                
+                <!-- Chat input area -->
+                <div class="chat-input-container">
+                    <textarea id="chatInput" class="chat-input" placeholder="Type your message here..." rows="2"></textarea>
+                    <button id="sendChatBtn" class="btn btn-send">
+                        <!-- Send message icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </div>
-        
 
-        <!-- Notes -->
+        <!-- Notes Section -->
         <div class="notes-container" id="notesContainer">
             <div class="notes-header">
                 <div class="header-with-toggle">
                     <span class="toggle-icon" id="toggleNotes">▼</span>
                     <span>Notes</span>
                 </div>
+                
+                <!-- Note action buttons -->
                 <div>
                     <button class="btn btn-primary btn-sm" id="addNoteBtn">Add Note</button>
                     <button class="btn btn-danger btn-sm" id="clearNotesBtn">Clear All</button>
                 </div>
+                
+                <!-- Export dropdown menu -->
                 <div class="export-dropdown">
                     <button class="btn btn-success btn-sm" id="exportNotesBtn">Export</button>
                     <div class="export-dropdown-content">
@@ -200,15 +229,18 @@
                     </div>
                 </div>
             </div>
+            
             <div id="notesContent" class="notes-content">
+                <!-- Default message when no notes exist -->
                 <div class="no-notes" id="noNotesMessage">No notes yet</div>
             </div>
         </div>
-        
 
-    <div class="message" id="message"></div>
-    
+        <!-- Global message display area -->
+        <div class="message" id="message"></div>
+    </div>
 
+    <!-- JavaScript file -->
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

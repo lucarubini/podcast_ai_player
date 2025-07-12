@@ -1,3 +1,10 @@
+/* =============================================================================
+   AUDIO TRANSCRIPTION WEB APP STYLES
+   ============================================================================= */
+
+/* =============================================================================
+   CSS VARIABLES (Custom Properties)
+   ============================================================================= */
 :root {
     --primary-color: #3498db;
     --secondary-color: #2ecc71;
@@ -8,6 +15,9 @@
     --danger-color: #e74c3c;
 }
 
+/* =============================================================================
+   GLOBAL RESET AND BASE STYLES
+   ============================================================================= */
 * {
     margin: 0;
     padding: 0;
@@ -24,6 +34,15 @@ body {
     margin: 0 auto;
 }
 
+h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* =============================================================================
+   CONTAINER STYLES
+   ============================================================================= */
 .container {
     background-color: white;
     border-radius: 8px;
@@ -32,12 +51,9 @@ body {
     margin-top: 20px;
 }
 
-h1 {
-    font-size: 24px;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
+/* =============================================================================
+   FILE UPLOAD SECTION
+   ============================================================================= */
 .upload-container {
     display: flex;
     flex-direction: column;
@@ -67,6 +83,9 @@ h1 {
     display: none;
 }
 
+/* =============================================================================
+   BUTTON STYLES
+   ============================================================================= */
 .btn {
     background-color: var(--primary-color);
     color: white;
@@ -83,6 +102,7 @@ h1 {
     background-color: #2980b9;
 }
 
+/* Button Variants */
 .btn-success {
     background-color: var(--secondary-color);
 }
@@ -116,6 +136,23 @@ h1 {
     background-color: #7f8c8d;
 }
 
+.btn-primary {
+    background-color: #9b59b6;
+}
+
+.btn-primary:hover {
+    background-color: #8e44ad;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+/* =============================================================================
+   AUDIO PLAYER SECTION
+   ============================================================================= */
 .player-container {
     margin-top: 20px;
     display: none;
@@ -128,6 +165,7 @@ h1 {
     color: #555;
 }
 
+/* Audio Controls */
 .controls {
     display: flex;
     align-items: center;
@@ -164,6 +202,7 @@ h1 {
     font-size: 16px;
 }
 
+/* Progress Bar */
 .progress-container {
     width: 100%;
     height: 8px;
@@ -182,13 +221,15 @@ h1 {
     transition: width 0.1s linear;
 }
 
-.message {
-    text-align: center;
-    margin-top: 10px;
-    color: #666;
-}
-
-.transcription-header, .bookmarks-header, .chat-header, .summary-header, .notes-header, .command-header {
+/* =============================================================================
+   COLLAPSIBLE SECTION HEADERS
+   ============================================================================= */
+.transcription-header, 
+.bookmarks-header, 
+.chat-header, 
+.summary-header, 
+.notes-header, 
+.command-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -200,112 +241,6 @@ h1 {
     border-bottom: 1px solid var(--border-color);
 }
 
-
-
-
-.transcript-segment, .bookmark-item {
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 4px;
-    border-left: 3px solid var(--border-color);
-    transition: background-color 0.3s ease;
-}
-
-.transcript-segment:hover, .bookmark-item:hover {
-    background-color: rgba(52, 152, 219, 0.1);
-    border-left-color: var(--primary-color);
-}
-
-.segment-time, .bookmark-time {
-    font-family: monospace;
-    font-size: 14px;
-    color: var(--primary-color);
-    cursor: pointer;
-    display: inline-block;
-    margin-bottom: 5px;
-}
-
-.segment-time:hover, .bookmark-time:hover {
-    text-decoration: underline;
-}
-
-.segment-text, .bookmark-text {
-    line-height: 1.5;
-}
-
-.currently-playing {
-    background-color: rgba(46, 204, 113, 0.1);
-    border-left-color: var(--secondary-color);
-}
-
-.loading-indicator {
-    display: none;
-    text-align: center;
-    padding: 20px;
-}
-
-.loading-spinner {
-    display: inline-block;
-    width: 30px;
-    height: 30px;
-    border: 3px solid rgba(52, 152, 219, 0.3);
-    border-radius: 50%;
-    border-top-color: var(--primary-color);
-    animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.button-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 15px;
-}
-
-.bookmark-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.bookmark-delete {
-    color: var(--danger-color);
-    cursor: pointer;
-    font-size: 20px;
-    padding: 0 5px;
-}
-
-.bookmark-delete:hover {
-    transform: scale(1.1);
-}
-
-.no-bookmarks {
-    text-align: center;
-    color: #666;
-    padding: 20px;
-}
-
-.bookmark-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.bookmark-title {
-    font-weight: bold;
-    margin-right: 10px;
-    color: var(--primary-color);
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Add these CSS rules to your styles.css file */
-
 .header-with-toggle {
     display: flex;
     align-items: center;
@@ -313,8 +248,8 @@ h1 {
 }
 
 .toggle-icon {
-    font-size: 12px;
-    margin-right: 8px;
+    margin-right: 10px;
+    font-weight: bold;
     transition: transform 0.3s ease;
 }
 
@@ -322,22 +257,33 @@ h1 {
     transform: rotate(-90deg);
 }
 
-.bookmarks-content {
-    transition: max-height 0.3s ease, opacity 0.3s ease;
-    max-height: 300px;
-    opacity: 1;
+/* =============================================================================
+   MAIN CONTENT CONTAINERS
+   ============================================================================= */
+.summary-container, 
+.transcription-container, 
+.bookmarks-container, 
+.chat-container, 
+.notes-container {
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     overflow: hidden;
+    display: none;
+    background-color: #fff;
 }
 
-.bookmarks-content.collapsed {
-    max-height: 0;
-    opacity: 0;
+.command-container {
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #f9f9f9;
 }
 
-
-/* Add these CSS rules to your styles.css file */
-
-
+/* =============================================================================
+   TRANSCRIPTION SECTION
+   ============================================================================= */
 .transcription-content {
     transition: max-height 0.3s ease, opacity 0.3s ease;
     max-height: 300px;
@@ -350,26 +296,219 @@ h1 {
     opacity: 0;
 }
 
+.transcript-segment {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border-left: 3px solid var(--border-color);
+    transition: background-color 0.3s ease;
+}
 
-.transcription-content, .bookmarks-content {
-    padding: 15px;
+.transcript-segment:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+    border-left-color: var(--primary-color);
+}
+
+.segment-time {
+    font-family: monospace;
+    font-size: 14px;
+    color: var(--primary-color);
+    cursor: pointer;
+    display: inline-block;
+    margin-bottom: 5px;
+}
+
+.segment-time:hover {
+    text-decoration: underline;
+}
+
+.segment-text {
+    line-height: 1.5;
+}
+
+.currently-playing {
+    background-color: rgba(46, 204, 113, 0.1);
+    border-left-color: var(--secondary-color);
+}
+
+/* =============================================================================
+   BOOKMARKS SECTION
+   ============================================================================= */
+.bookmarks-content {
+    transition: max-height 0.3s ease, opacity 0.3s ease;
     max-height: 300px;
-    overflow-y: auto;
-}
-
-
-/* Summary container styles */
-.summary-container, .transcription-container, .bookmarks-container, .chat-container, .notes-container {
-    margin-top: 20px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    opacity: 1;
     overflow: hidden;
-    display: none;
-    background-color: #fff;
 }
 
+.bookmarks-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
 
+.bookmark-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border-left: 3px solid var(--border-color);
+    transition: background-color 0.3s ease;
+}
 
+.bookmark-item:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+    border-left-color: var(--primary-color);
+}
+
+.bookmark-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.bookmark-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.bookmark-title {
+    font-weight: bold;
+    margin-right: 10px;
+    color: #333;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bookmark-time {
+    font-family: monospace;
+    font-size: 14px;
+    color: var(--primary-color);
+    cursor: pointer;
+    display: inline-block;
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+.bookmark-time:hover {
+    text-decoration: underline;
+}
+
+.bookmark-text {
+    line-height: 1.5;
+}
+
+.bookmark-delete {
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 0px 5px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.bookmark-delete:hover {
+    background-color: #f8d7da;
+    transform: scale(1.1);
+}
+
+.no-bookmarks {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+}
+
+/* Bookmark Action Buttons */
+.bookmark-action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.bookmark-edit-comments,
+.bookmark-generate-comments,
+.bookmark-copy-note {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.bookmark-edit-comments:hover,
+.bookmark-generate-comments:hover{
+    background-color: #f0f0f0;
+}
+
+.bookmark-generate-comments {
+    color: #007bff;
+}
+
+.bookmark-generate-comments:hover {
+    background-color: #e3f2fd;
+}
+
+.bookmark-edit-comments {
+    color: #28a745;
+}
+
+.bookmark-edit-comments:hover {
+    background-color: #f0f8f0;
+}
+
+.bookmark-copy-note {
+    color: #6c757d;
+}
+
+.bookmark-copy-note:hover {
+    background-color: #f8f9fa;
+    text-decoration: underline;
+}
+
+/* Bookmark Comments */
+.bookmark-comments {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #666;
+    border-left: 3px solid #007bff;
+}
+
+.bookmark-comments:empty {
+    display: none;
+}
+
+.bookmark-comments-textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.9em;
+    resize: vertical;
+}
+
+.bookmark-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-end;
+}
+
+.bookmark-edit-actions .btn {
+    padding: 4px 12px;
+    font-size: 0.8em;
+}
+
+/* =============================================================================
+   SUMMARY SECTION
+   ============================================================================= */
 .summary-content {
     padding: 15px;
     max-height: 200px;
@@ -397,18 +536,9 @@ h1 {
     padding: 20px;
 }
 
-/* Make the summary button stand out */
-.btn-primary {
-    background-color: #9b59b6;
-}
-
-.btn-primary:hover {
-    background-color: #8e44ad;
-}
-
-/* Chat styles */
-
-
+/* =============================================================================
+   CHAT SECTION
+   ============================================================================= */
 .chat-content {
     display: flex;
     flex-direction: column;
@@ -429,11 +559,19 @@ h1 {
     gap: 10px;
 }
 
+/* Chat Message Styles */
 .chat-message {
     padding: 10px 15px;
     border-radius: 10px;
     max-width: 80%;
     word-break: break-word;
+}
+
+
+.chat-message-content {
+    flex-grow: 1;
+    margin-right: 10px;
+    padding: 10px 12px;
 }
 
 .user-message {
@@ -444,6 +582,7 @@ h1 {
 .assistant-message {
     align-self: flex-start;
     background-color: #f1f1f1;
+    padding: 0; /* Remove padding as it's now on the inner elements */
 }
 
 .system-message {
@@ -454,6 +593,25 @@ h1 {
     opacity: 0.8;
 }
 
+.chat-save-note-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    font-size: 16px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.chat-save-note-btn:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Chat Input */
 .chat-input-container {
     display: flex;
     padding: 10px;
@@ -494,6 +652,7 @@ h1 {
     cursor: not-allowed;
 }
 
+/* Typing Indicator */
 .chat-typing {
     align-self: flex-start;
     padding: 10px 15px;
@@ -529,22 +688,9 @@ h1 {
     animation-delay: 0.4s;
 }
 
-@keyframes typingAnimation {
-    0%, 60%, 100% {
-        transform: translateY(0);
-    }
-    30% {
-        transform: translateY(-5px);
-    }
-}
-
-.collapsed {
-    display: none !important;
-}
-
-/* Notes Container */
-
-
+/* =============================================================================
+   NOTES SECTION
+   ============================================================================= */
 .notes-content {
     padding: 15px;
     max-height: 300px;
@@ -565,7 +711,7 @@ h1 {
     padding: 10px;
 }
 
-/* Note Item */
+/* Note Item Styles */
 .note-item {
     margin-bottom: 15px;
     border: 1px solid #e5e5e5;
@@ -639,125 +785,9 @@ h1 {
     margin-top: 8px;
 }
 
-/* Export Dropdown */
-.export-dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.export-dropdown-content {
-    display: none;
-    position: absolute;
-    right: 0;
-    background-color: #f9f9f9;
-    min-width: 160px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1;
-    border-radius: 4px;
-}
-
-.export-dropdown-content button {
-    color: black;
-    padding: 10px 14px;
-    text-decoration: none;
-    display: block;
-    text-align: left;
-    border: none;
-    background: none;
-    width: 100%;
-    cursor: pointer;
-}
-
-.export-dropdown-content button:hover {
-    background-color: #f1f1f1;
-}
-
-.export-dropdown:hover .export-dropdown-content {
-    display: block;
-}
-
-/* Add bookmark button in bookmark items */
-.bookmark-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.bookmark-copy-note {
-    cursor: pointer;
-    color: #4a90e2;
-    font-size: 14px;
-    margin-right: 8px;
-}
-
-.bookmark-copy-note:hover {
-    text-decoration: underline;
-}
-
-/* Add these styles to your styles.css file */
-
-/* Chat message container with save button */
-.chat-message-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
-.chat-message-content {
-    flex-grow: 1;
-    margin-right: 10px;
-}
-
-.chat-save-note-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #555;
-    font-size: 16px;
-    padding: 3px 6px;
-    border-radius: 3px;
-    opacity: 0.5;
-    transition: opacity 0.2s;
-    flex-shrink: 0;
-}
-
-.chat-save-note-btn:hover {
-    opacity: 1;
-    background-color: rgba(0,0,0,0.05);
-}
-
-/* Adjust the assistant message styling */
-.assistant-message {
-    padding: 0; /* Remove padding as it's now on the inner elements */
-}
-
-.chat-message-content {
-    padding: 10px 12px;
-}
-
-/* Style for command prompt - add to styles.css */
-
-.command-container {
-    margin-top: 20px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: #f9f9f9;
-}
-
-
-.header-with-toggle {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-}
-
-.toggle-icon {
-    margin-right: 10px;
-    font-weight: bold;
-    transition: transform 0.3s ease;
-}
-
+/* =============================================================================
+   COMMAND SECTION
+   ============================================================================= */
 .command-content {
     padding: 10px;
     transition: max-height 0.3s ease;
@@ -841,7 +871,9 @@ h1 {
     font-weight: bold;
 }
 
-/* Styles for PTT Button */
+/* =============================================================================
+   PUSH-TO-TALK (PTT) SECTION
+   ============================================================================= */
 #pttButton {
     background-color: var(--primary-color);
     color: white;
@@ -874,7 +906,7 @@ h1 {
     height: 20px;
 }
 
-/* Styles for Language Select */
+/* Language Select */
 .language-select {
     padding: 8px 10px;
     border: 1px solid #ccc;
@@ -896,7 +928,7 @@ h1 {
     border-color: var(--primary-color);
 }
 
-/* Styles for PTT Transcript Display */
+/* PTT Transcript Display */
 .ptt-transcript-display {
     min-height: 40px;
     background-color: #e9ecef;
@@ -910,7 +942,92 @@ h1 {
     word-wrap: break-word;
 }
 
-/* Keyframe for pulse animation */
+/* =============================================================================
+   EXPORT DROPDOWN
+   ============================================================================= */
+.export-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.export-dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    border-radius: 4px;
+}
+
+.export-dropdown-content button {
+    color: black;
+    padding: 10px 14px;
+    text-decoration: none;
+    display: block;
+    text-align: left;
+    border: none;
+    background: none;
+    width: 100%;
+    cursor: pointer;
+}
+
+.export-dropdown-content button:hover {
+    background-color: #f1f1f1;
+}
+
+.export-dropdown:hover .export-dropdown-content {
+    display: block;
+}
+
+/* =============================================================================
+   UTILITY CLASSES
+   ============================================================================= */
+.message {
+    text-align: center;
+    margin-top: 10px;
+    color: #666;
+}
+
+.loading-indicator {
+    display: none;
+    text-align: center;
+    padding: 20px;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(52, 152, 219, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+}
+
+.collapsed {
+    display: none !important;
+}
+
+/* =============================================================================
+   KEYFRAME ANIMATIONS
+   ============================================================================= */
+@keyframes spin {
+    to { 
+        transform: rotate(360deg); 
+    }
+}
+
+@keyframes typingAnimation {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-5px);
+    }
+}
+
 @keyframes pulse {
     0% {
         box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
@@ -922,123 +1039,3 @@ h1 {
         box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
     }
 }
-
-
-/* Bookmark comments styles - ADD THESE TO YOUR EXISTING CSS */
-
-.bookmark-comments {
-    margin-top: 8px;
-    padding: 8px;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #666;
-    border-left: 3px solid #007bff;
-}
-
-.bookmark-comments:empty {
-    display: none;
-}
-
-.bookmark-comments-textarea {
-    width: 100%;
-    min-height: 60px;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-family: inherit;
-    font-size: 0.9em;
-    resize: vertical;
-}
-
-.bookmark-edit-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-    justify-content: flex-end;
-}
-
-.bookmark-edit-actions .btn {
-    padding: 4px 12px;
-    font-size: 0.8em;
-}
-
-.bookmark-action-buttons {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.bookmark-edit-comments,
-.bookmark-generate-comments,
-.bookmark-copy-note,
-.bookmark-delete {
-    cursor: pointer;
-    padding: 4px 6px;
-    border-radius: 3px;
-    font-size: 0.9em;
-    transition: background-color 0.2s;
-}
-
-.bookmark-edit-comments:hover,
-.bookmark-generate-comments:hover,
-.bookmark-copy-note:hover {
-    background-color: #f0f0f0;
-}
-
-.bookmark-generate-comments {
-    color: #007bff;
-}
-
-.bookmark-generate-comments:hover {
-    background-color: #e3f2fd;
-}
-
-.bookmark-edit-comments {
-    color: #28a745;
-}
-
-.bookmark-edit-comments:hover {
-    background-color: #f0f8f0;
-}
-
-.bookmark-copy-note {
-    color: #6c757d;
-}
-
-.bookmark-copy-note:hover {
-    background-color: #f8f9fa;
-}
-
-.bookmark-delete {
-    color: #dc3545;
-    font-size: 1.2em;
-}
-
-.bookmark-delete:hover {
-    background-color: #f8d7da;
-}
-
-/* Update bookmark actions layout */
-.bookmark-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.bookmark-title {
-    font-weight: bold;
-    color: #333;
-}
-
-.bookmark-time {
-    color: #007bff;
-    cursor: pointer;
-    font-family: monospace;
-}
-
-.bookmark-time:hover {
-    text-decoration: underline;
-}
-
