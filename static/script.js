@@ -81,11 +81,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Audio Player State
     const audioElement = new Audio();
     let isPlaying = false;
-    
+
     // File Management State
     let currentFile = null;
     let fileId = null;
     let segments = [];
+
+    // Bookmarks
+    let bookmarkCounter = 1;
     
     // PTT State
     let wasPlayingBeforePTT = false;
@@ -465,11 +468,12 @@ document.addEventListener('DOMContentLoaded', function() {
             time: currentTime,
             text: relevantText,
             timeFormatted: formatTime(currentTime),
-            title: 'bookmark',
+            title: `Bookmark ${bookmarkCounter}`,
             comments: ''
         };
 
         bookmarks.push(bookmark);
+        bookmarkCounter++;
         displayBookmarks();
         
         exportBookmarksBtn.disabled = bookmarks.length === 0;
