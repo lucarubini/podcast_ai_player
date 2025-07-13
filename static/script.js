@@ -507,25 +507,26 @@ document.addEventListener('DOMContentLoaded', function() {
      * Displays all bookmarks in the bookmarks container
      */
     function displayBookmarks() {
-        bookmarksContent.innerHTML = '';
+        // Preserve the message element
+        noBookmarksMessage.style.display = bookmarks.length === 0 ? 'block' : 'none';
 
-        // Handle empty bookmarks state
-        if (bookmarks.length === 0) {
-            noBookmarksMessage.style.display = 'block';
+        // Clear only bookmark items
+        const existingBookmarks = bookmarksContent.querySelectorAll('.bookmark-item');
+        existingBookmarks.forEach(el => el.remove());
+
+        // Add bookmarks if they exist
+        if (bookmarks.length > 0) {
+            exportBookmarksBtn.disabled = false;
+            bookmarks.sort((a, b) => a.time - b.time);
+            bookmarks.forEach(bookmark => {
+                const bookmarkEl = createBookmarkElement(bookmark);
+                bookmarksContent.appendChild(bookmarkEl);
+            });
+        } else {
             exportBookmarksBtn.disabled = true;
-            return;
         }
-
-        noBookmarksMessage.style.display = 'none';
-        exportBookmarksBtn.disabled = false;
-
-        // Sort bookmarks by time and display
-        bookmarks.sort((a, b) => a.time - b.time);
-        bookmarks.forEach(bookmark => {
-            const bookmarkEl = createBookmarkElement(bookmark);
-            bookmarksContent.appendChild(bookmarkEl);
-        });
     }
+
 
     /**
      * Creates a DOM element for a bookmark
@@ -1981,7 +1982,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Display updated notes
         displayNotes();
-        
+       
         // If content is empty, immediately put the note in edit mode
         if (!content) {
             setTimeout(() => {
@@ -2001,7 +2002,8 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function displayNotes() {
         // Clear current notes display
-        notesContent.innerHTML = '';
+        // Preserve the message element
+        noNotesMessage.style.display = notes.length === 0 ? 'block' : 'none';
         
         // Show/hide no notes message
         if (notes.length === 0) {
