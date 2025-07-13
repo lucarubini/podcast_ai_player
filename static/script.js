@@ -1244,6 +1244,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========================================
 
     /**
+     * Convert Markdown to HTML
+     */
+    function markdownToHtml(markdown) {
+        return markdown
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+            .replace(/!\[(.*?)\]\((.*?)\)/gim, '<img alt="$1" src="$2">')
+            .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2">$1</a>')
+            .replace(/\n- (.*?)(?=\n|$)/gim, '<ul><li>$1</li></ul>')
+            .replace(/\n\* (.*?)(?=\n|$)/gim, '<ul><li>$1</li></ul>')
+            .replace(/\n\d+\. (.*?)(?=\n|$)/gim, '<ol><li>$1</li></ol>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+    }
+
+    /**
      * Generate AI summary of the entire transcript
      */
     function generateSummary() {
@@ -1279,8 +1298,8 @@ document.addEventListener('DOMContentLoaded', function() {
             summaryLoading.style.display = 'none';
 
             if (data.summary) {
-                // Display the summary
-                summaryText.textContent = data.summary;
+                // Display the summary as HTML
+                summaryText.innerHTML = data.summary;
                 summaryText.style.display = 'block';
                 showMessage('Summary generated successfully');
             } else {

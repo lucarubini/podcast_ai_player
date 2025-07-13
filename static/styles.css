@@ -538,6 +538,45 @@ h1 {
     padding: 20px;
 }
 
+.summary-text h1, 
+.summary-text h2, 
+.summary-text h3 {
+    margin: 1.5em 0 0.8em;
+    color: #2c3e50;
+}
+
+.summary-text h1 { font-size: 24px; }
+.summary-text h2 { font-size: 20px; }
+.summary-text h3 { font-size: 18px; }
+
+.summary-text p {
+    margin-bottom: 1.2em;
+}
+
+.summary-text ul, 
+.summary-text ol {
+    margin-left: 20px;
+    margin-bottom: 1.5em;
+}
+
+.summary-text li {
+    margin-bottom: 0.5em;
+}
+
+.summary-text strong {
+    font-weight: 600;
+    color: #2980b9;
+}
+
+.summary-text em {
+    font-style: italic;
+}
+
+.summary-text a {
+    color: #3498db;
+    text-decoration: underline;
+}
+
 /* =============================================================================
    CHAT SECTION
    ============================================================================= */
