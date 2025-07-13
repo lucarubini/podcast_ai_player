@@ -51,15 +51,15 @@ This project is a web-based application designed for audio transcription and ana
 1.  **Clone the repository (if not already done):**
 
     ```bash
-    git clone <repository_url>
-    cd <repository_name>
+    git clone [<repository_url>](https://github.com/lucarubini/podcast_ai_player.git)
+    cd podcast_ai_player
     ```
 
 2.  **Create a virtual environment and activate it:**
 
     ```bash
     python -m venv venv
-    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    source venv/bin/activate
     ```
 
 3.  **Install backend dependencies:**
@@ -67,8 +67,6 @@ This project is a web-based application designed for audio transcription and ana
     ```bash
     pip install -r requirements.txt
     ```
-
-    (Note: A `requirements.txt` file is assumed, containing `Flask`, `openai-whisper`, `azure-cognitiveservices-speech`, `azure-identity`, `pydub`, `python-dotenv`, `Flask-CORS`, `requests`.)
 
 4.  **Configure Environment Variables:**
     Create a `.env` file in the root directory of the project and add your Azure credentials:
@@ -94,8 +92,6 @@ This project is a web-based application designed for audio transcription and ana
 ### Frontend Setup
 
 The frontend is served directly by the Flask application. No separate build step is typically required for `script.js` and other static assets, assuming they are placed in the `static` and `templates` folders as configured in `app.py`.
-
-Ensure `index.html` is in the `templates` folder and `script.js` (and any CSS files) are in the `static` folder.
 
 ## Usage
 
