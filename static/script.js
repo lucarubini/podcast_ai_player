@@ -1441,21 +1441,30 @@ document.addEventListener('DOMContentLoaded', function() {
      * Sets up the command container toggle functionality
      * Handles expanding/collapsing the command panel and persists state
      */
+
+    // =============================================================================
+    // Plan Execution State
+    // =============================================================================
+    let currentPlanExecution = {
+        isExecuting: false,
+        currentPlan: null
+    };
+
     function setupCommandToggle() {
         const commandContent = document.getElementById('commandContent');
-        
+
         if (!commandToggleIcon || !commandContent) return;
-        
+
         // Set up the click handler
         document.querySelector('.command-header .header-with-toggle').addEventListener('click', function() {
             commandToggleIcon.textContent = commandToggleIcon.textContent === '▼' ? '►' : '▼';
             commandContent.classList.toggle('collapsed');
-            
+
             // Save the state to localStorage
             const isCollapsed = commandContent.classList.contains('collapsed');
             localStorage.setItem('commandsCollapsed', isCollapsed);
         });
-        
+
         // Initialize based on saved state
         const savedState = localStorage.getItem('commandsCollapsed');
         if (savedState === 'true') {
@@ -1467,26 +1476,27 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Executes a command from the command input
      * Handles API communication and command interpretation
+     * Now supports both single actions and action plans
      */
     function executeCommand() {
-        if (isExecutingCommand) return;
-        
+        if (isExecutingCommand || currentPlanExecution.isExecuting) return;
+
         const command = commandInput.value.trim();
         if (!command) return;
-        
+
         // Clear input
         commandInput.value = '';
-        
+
         // Add command to history UI
         addToCommandHistory('user', command);
-        
+
         // Set executing state
         isExecutingCommand = true;
         executeCommandBtn.disabled = true;
-        
+
         // Show processing indicator
         addToCommandHistory('system', 'Processing command...');
-        
+
         // Get current application state for context
         const appState = {
             isAudioLoaded: !!audioElement.src,
@@ -1498,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fileName: currentFile ? currentFile.name : null,
             fileId: fileId
         };
-        
+
         // Make API request to interpret command
         fetch(`${API_URL}/interpret_command`, {
             method: 'POST',
@@ -1517,12 +1527,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 addToCommandHistory('system', `Error: ${data.error}`);
                 return;
             }
-            
+
             // Show detected intent in history
+            console.log(command);
             addToCommandHistory('system', `Intent detected: ${data.intent}`);
-            
-            // Execute the command based on the interpreted action
-            executeAction(data.action, data.parameters);
+
+            // Check if this is a plan (multiple actions) or single action
+            if (data.actions && Array.isArray(data.actions)) {
+                // Execute the plan
+                executePlan(data);
+            } else if (data.action) {
+                // Legacy single action support
+                executeAction(data.action, data.parameters);
+            } else {
+                addToCommandHistory('system', 'No valid action found in command response');
+            }
         })
         .catch(error => {
             console.error('Command interpretation error:', error);
@@ -1535,215 +1554,311 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // =============================================================================
+    // Plan Execution Functions
+    // =============================================================================
+
+    /**
+     * Executes a plan containing multiple actions
+     * Supports both sequential and parallel execution
+     */
+    async function executePlan(planResponse) {
+        if (currentPlanExecution.isExecuting) {
+            addToCommandHistory('system', 'Another plan is already executing, please wait...');
+            return;
+        }
+        
+        currentPlanExecution.isExecuting = true;
+        currentPlanExecution.currentPlan = planResponse;
+        
+        try {
+            addToCommandHistory('system', `Executing plan: ${planResponse.intent}`);
+            
+            if (planResponse.execution_mode === 'parallel') {
+                await executeActionsParallel(planResponse.actions);
+            } else {
+                await executeActionsSequential(planResponse.actions);
+            }
+            
+            addToCommandHistory('system', 'Plan execution completed successfully');
+        } catch (error) {
+            console.error('Plan execution failed:', error);
+            addToCommandHistory('system', `Plan execution failed: ${error.message}`);
+        } finally {
+            currentPlanExecution.isExecuting = false;
+            currentPlanExecution.currentPlan = null;
+        }
+    }
+
+    /**
+     * Executes actions one after another with optional delays
+     */
+    async function executeActionsSequential(actions) {
+        for (let i = 0; i < actions.length; i++) {
+            const actionItem = actions[i];
+            
+            // Add delay if specified
+            if (actionItem.delay) {
+                addToCommandHistory('system', `Waiting ${actionItem.delay}ms before next action...`);
+                await sleep(actionItem.delay);
+            }
+            
+            // Execute the action
+            addToCommandHistory('system', `Executing step ${i + 1}/${actions.length}: ${actionItem.action}`);
+            await executeActionAsync(actionItem.action, actionItem.parameters);
+        }
+    }
+
+    /**
+     * Executes actions simultaneously
+     */
+    async function executeActionsParallel(actions) {
+        addToCommandHistory('system', `Executing ${actions.length} actions simultaneously...`);
+        
+        const promises = actions.map(async (actionItem, index) => {
+            if (actionItem.delay) {
+                await sleep(actionItem.delay);
+            }
+            
+            addToCommandHistory('system', `Parallel action ${index + 1}: ${actionItem.action}`);
+            return executeActionAsync(actionItem.action, actionItem.parameters);
+        });
+        
+        await Promise.all(promises);
+    }
+
+    /**
+     * Async wrapper for executeAction to support plan execution
+     */
+    async function executeActionAsync(action, parameters) {
+        return new Promise((resolve, reject) => {
+            try {
+                executeAction(action, parameters);
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Utility function for delays
+     */
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     /**
      * Executes a specific action based on interpreted command
      * Main command dispatcher for all audio player actions
+     * Enhanced with better error handling for plan execution
      */
     function executeAction(action, parameters) {
-        switch (action) {
-            case 'play':
-                if (audioElement.src) {
-                    audioElement.play();
-                    isPlaying = true;
-                    playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
-                    addToCommandHistory('system', 'Playing audio');
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'pause':
-                if (audioElement.src) {
-                    audioElement.pause();
-                    isPlaying = false;
-                    playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-                    addToCommandHistory('system', 'Paused audio');
-                }
-                break;
-                
-            case 'seek':
-                if (audioElement.src) {
-                    let seekTime = 0;
-                    
-                    if (parameters.timeString) {
-                        // Convert time string (HH:MM:SS) to seconds
-                        const timeParts = parameters.timeString.split(':').map(Number);
-                        if (timeParts.length === 3) {
-                            seekTime = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
-                        } else if (timeParts.length === 2) {
-                            seekTime = timeParts[0] * 60 + timeParts[1];
-                        } else {
-                            seekTime = timeParts[0];
-                        }
-                    } else if (parameters.seconds !== undefined) {
-                        seekTime = parameters.seconds;
-                    } else if (parameters.percentage) {
-                        seekTime = audioElement.duration * (parameters.percentage / 100);
-                    }
-                    
-                    // Ensure time is within valid range
-                    seekTime = Math.min(Math.max(0, seekTime), audioElement.duration || 0);
-                    
-                    audioElement.currentTime = seekTime;
-                    addToCommandHistory('system', `Jumped to ${formatTime(seekTime)}`);
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'add_bookmark':
-                if (segments.length === 0) {
-                    addToCommandHistory('system', 'Please transcribe audio first before adding bookmarks');
-                    return;
-                }
-                
-                // Use provided title or generate one
-                const bookmarkTitle = 'bookmark';
-                
-                // Get current position
-                const currentTime = audioElement.currentTime;
-                const bookmarkId = Date.now();
-                
-                // Find relevant transcript text
-                const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
-                
-                // Create and add bookmark
-                const bookmark = {
-                    id: bookmarkId,
-                    time: currentTime,
-                    text: relevantText,
-                    timeFormatted: formatTime(currentTime),
-                    title: bookmarkTitle
-                };
-                
-                bookmarks.push(bookmark);
-                displayBookmarks();
-                exportBookmarksBtn.disabled = bookmarks.length === 0;
-                
-                addToCommandHistory('system', `Added bookmark at ${formatTime(currentTime)}`);
-                break;
-                
-            case 'transcribe':
-                if (!fileId) {
-                    addToCommandHistory('system', 'Please upload an audio file first');
-                    return;
-                }
-                
-                // Call the existing transcribe function
-                addToCommandHistory('system', 'Starting transcription process...');
-                
-                // Start transcription (reusing existing function)
-                transcribeAudio();
-                break;
-                
-            case 'upload_prompt':
-                // Just show a message instructing user to use file upload
-                addToCommandHistory('system', 'To upload a file, click the "Select File" button or drag and drop an audio file to the upload area');
-                break;
-                
-            case 'export_transcript':
-                if (segments.length === 0) {
-                    addToCommandHistory('system', 'No transcript available to export');
-                    return;
-                }
-                
-                exportTranscript();
-                addToCommandHistory('system', 'Transcript exported successfully');
-                break;
-                
-            case 'export_bookmarks':
-                if (bookmarks.length === 0) {
-                    addToCommandHistory('system', 'No bookmarks to export');
-                    return;
-                }
-                
-                exportBookmarks();
-                addToCommandHistory('system', 'Bookmarks exported successfully');
-                break;
-                
-            case 'skip_forward':
-                if (audioElement.src) {
-                    const skipAmount = parameters.seconds || 10; // Default to 10 seconds
-                    const newTime = Math.min(audioElement.currentTime + skipAmount, audioElement.duration);
-                    audioElement.currentTime = newTime;
-                    addToCommandHistory('system', `Skipped forward ${skipAmount} seconds`);
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'skip_backward':
-                if (audioElement.src) {
-                    const skipAmount = parameters.seconds || 10; // Default to 10 seconds
-                    const newTime = Math.max(audioElement.currentTime - skipAmount, 0);
-                    audioElement.currentTime = newTime;
-                    addToCommandHistory('system', `Skipped backward ${skipAmount} seconds`);
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'change_playback_speed':
-                if (audioElement.src) {
-                    const newSpeed = parameters.speed || 1.0;
-                    // Limit to reasonable range
-                    const limitedSpeed = Math.min(Math.max(0.25, newSpeed), 3.0);
-                    audioElement.playbackRate = limitedSpeed;
-                    addToCommandHistory('system', `Changed playback speed to ${limitedSpeed}x`);
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'find_in_transcript':
-                if (segments.length === 0) {
-                    addToCommandHistory('system', 'No transcript available to search');
-                    return;
-                }
-                
-                const searchTerm = parameters.searchTerm;
-                if (!searchTerm) {
-                    addToCommandHistory('system', 'No search term provided');
-                    return;
-                }
-                
-                const results = searchTranscript(searchTerm);
-                if (results.length === 0) {
-                    addToCommandHistory('system', `No matches found for "${searchTerm}"`);
-                } else {
-                    addToCommandHistory('system', `Found ${results.length} matches for "${searchTerm}"`);
-                    
-                    // If there's a specific occurrence requested
-                    if (parameters.occurrence && parameters.occurrence <= results.length) {
-                        const selectedResult = results[parameters.occurrence - 1];
-                        audioElement.currentTime = selectedResult.start;
-                        addToCommandHistory('system', `Jumped to occurrence ${parameters.occurrence} at ${formatTime(selectedResult.start)}`);
+        try {
+            switch (action) {
+                case 'play':
+                    if (audioElement.src) {
+                        audioElement.play();
+                        isPlaying = true;
+                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+                        addToCommandHistory('system', 'Playing audio');
                     } else {
-                        // Otherwise, show the first few results
-                        const displayResults = results.slice(0, 3);
-                        displayResults.forEach((result, i) => {
-                            addToCommandHistory('system', `${i+1}. [${formatTime(result.start)}]: "${result.text}"`);
-                        });
-                        
-                        if (results.length > 3) {
-                            addToCommandHistory('system', `...and ${results.length - 3} more matches`);
-                        }
-                        
-                        // Jump to the first occurrence
-                        audioElement.currentTime = results[0].start;
-                        addToCommandHistory('system', `Jumped to first occurrence at ${formatTime(results[0].start)}`);
+                        addToCommandHistory('system', 'No audio file loaded');
                     }
-                }
-                break;
-                
-            case 'help':
-                showCommandHelp();
-                break;
-                
-            case 'unknown':
-            default:
-                addToCommandHistory('system', 'Sorry, I don\'t understand that command. Type "help" to see available commands.');
-                break;
+                    break;
+
+                case 'pause':
+                    if (audioElement.src) {
+                        audioElement.pause();
+                        isPlaying = false;
+                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+                        addToCommandHistory('system', 'Paused audio');
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'seek':
+                    if (audioElement.src) {
+                        let seekTime = 0;
+
+                        if (parameters.timeString) {
+                            // Convert time string (HH:MM:SS) to seconds
+                            const timeParts = parameters.timeString.split(':').map(Number);
+                            if (timeParts.length === 3) {
+                                seekTime = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
+                            } else if (timeParts.length === 2) {
+                                seekTime = timeParts[0] * 60 + timeParts[1];
+                            } else {
+                                seekTime = timeParts[0];
+                            }
+                        } else if (parameters.seconds !== undefined) {
+                            seekTime = parameters.seconds;
+                        } else if (parameters.percentage) {
+                            seekTime = audioElement.duration * (parameters.percentage / 100);
+                        }
+
+                        // Ensure time is within valid range
+                        seekTime = Math.min(Math.max(0, seekTime), audioElement.duration || 0);
+
+                        audioElement.currentTime = seekTime;
+                        addToCommandHistory('system', `Jumped to ${formatTime(seekTime)}`);
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'add_bookmark':
+                    if (segments.length === 0) {
+                        addToCommandHistory('system', 'Please transcribe audio first before adding bookmarks');
+                        return;
+                    }
+
+                    // Use provided title or note, or generate one
+                    const bookmarkTitle = parameters.title || parameters.note || 'bookmark';
+
+                    // Get current position
+                    const currentTime = audioElement.currentTime;
+                    const bookmarkId = Date.now();
+
+                    // Find relevant transcript text
+                    const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
+
+                    // Create and add bookmark
+                    const bookmark = {
+                        id: bookmarkId,
+                        time: currentTime,
+                        text: relevantText,
+                        timeFormatted: formatTime(currentTime),
+                        title: bookmarkTitle
+                    };
+
+                    bookmarks.push(bookmark);
+                    displayBookmarks();
+                    exportBookmarksBtn.disabled = bookmarks.length === 0;
+
+                    addToCommandHistory('system', `Added bookmark "${bookmarkTitle}" at ${formatTime(currentTime)}`);
+                    break;
+
+                case 'transcribe':
+                    if (!fileId) {
+                        addToCommandHistory('system', 'Please upload an audio file first');
+                        return;
+                    }
+
+                    // Call the existing transcribe function
+                    addToCommandHistory('system', 'Starting transcription process...');
+                    transcribeAudio();
+                    break;
+
+                case 'upload_prompt':
+                    addToCommandHistory('system', 'To upload a file, click the "Select File" button or drag and drop an audio file to the upload area');
+                    break;
+
+                case 'export_transcript':
+                    if (segments.length === 0) {
+                        addToCommandHistory('system', 'No transcript available to export');
+                        return;
+                    }
+
+                    exportTranscript();
+                    addToCommandHistory('system', 'Transcript exported successfully');
+                    break;
+
+                case 'export_bookmarks':
+                    if (bookmarks.length === 0) {
+                        addToCommandHistory('system', 'No bookmarks to export');
+                        return;
+                    }
+
+                    exportBookmarks();
+                    addToCommandHistory('system', 'Bookmarks exported successfully');
+                    break;
+
+                case 'skip_forward':
+                    if (audioElement.src) {
+                        const skipAmount = parameters.seconds || 10;
+                        const newTime = Math.min(audioElement.currentTime + skipAmount, audioElement.duration);
+                        audioElement.currentTime = newTime;
+                        addToCommandHistory('system', `Skipped forward ${skipAmount} seconds`);
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'skip_backward':
+                    if (audioElement.src) {
+                        const skipAmount = parameters.seconds || 10;
+                        const newTime = Math.max(audioElement.currentTime - skipAmount, 0);
+                        audioElement.currentTime = newTime;
+                        addToCommandHistory('system', `Skipped backward ${skipAmount} seconds`);
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'change_playback_speed':
+                    if (audioElement.src) {
+                        const newSpeed = parameters.speed || 1.0;
+                        const limitedSpeed = Math.min(Math.max(0.25, newSpeed), 3.0);
+                        audioElement.playbackRate = limitedSpeed;
+                        addToCommandHistory('system', `Changed playback speed to ${limitedSpeed}x`);
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'find_in_transcript':
+                    if (segments.length === 0) {
+                        addToCommandHistory('system', 'No transcript available to search');
+                        return;
+                    }
+
+                    const searchTerm = parameters.searchTerm || parameters.query;
+                    if (!searchTerm) {
+                        addToCommandHistory('system', 'No search term provided');
+                        return;
+                    }
+
+                    const results = searchTranscript(searchTerm);
+                    if (results.length === 0) {
+                        addToCommandHistory('system', `No matches found for "${searchTerm}"`);
+                    } else {
+                        addToCommandHistory('system', `Found ${results.length} matches for "${searchTerm}"`);
+
+                        if (parameters.occurrence && parameters.occurrence <= results.length) {
+                            const selectedResult = results[parameters.occurrence - 1];
+                            audioElement.currentTime = selectedResult.start;
+                            addToCommandHistory('system', `Jumped to occurrence ${parameters.occurrence} at ${formatTime(selectedResult.start)}`);
+                        } else {
+                            const displayResults = results.slice(0, 3);
+                            displayResults.forEach((result, i) => {
+                                addToCommandHistory('system', `${i+1}. [${formatTime(result.start)}]: "${result.text}"`);
+                            });
+
+                            if (results.length > 3) {
+                                addToCommandHistory('system', `...and ${results.length - 3} more matches`);
+                            }
+
+                            audioElement.currentTime = results[0].start;
+                            addToCommandHistory('system', `Jumped to first occurrence at ${formatTime(results[0].start)}`);
+                        }
+                    }
+                    break;
+
+                case 'help':
+                    showCommandHelp();
+                    break;
+
+                case 'unknown':
+                default:
+                    addToCommandHistory('system', 'Sorry, I don\'t understand that command. Type "help" to see available commands.');
+                    break;
+            }
+        } catch (error) {
+            console.error(`Error executing action ${action}:`, error);
+            addToCommandHistory('system', `Error executing ${action}: ${error.message}`);
+            throw error; // Re-throw for plan execution error handling
         }
     }
 
@@ -1753,10 +1868,10 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function searchTranscript(term) {
         if (!term || segments.length === 0) return [];
-        
+
         const results = [];
         const termLower = term.toLowerCase();
-        
+
         segments.forEach(segment => {
             if (segment.text.toLowerCase().includes(termLower)) {
                 results.push({
@@ -1766,13 +1881,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
-        
+
         return results;
     }
 
     /**
      * Displays command help information
      * Shows available commands and their descriptions
+     * Updated with multi-action command examples
      */
     function showCommandHelp() {
         const helpCommands = [
@@ -1785,9 +1901,15 @@ document.addEventListener('DOMContentLoaded', function() {
             "- Export transcript/bookmarks",
             "- Change speed to [0.5-3x]",
             "- Find '[word/phrase]' in transcript",
-            "- Help (shows this message)"
+            "- Help (shows this message)",
+            "",
+            "🔗 Multi-Action Commands:",
+            "- 'Jump to 2:30, add bookmark, then play'",
+            "- 'Transcribe and export transcript'",
+            "- 'Pause, seek to beginning, then play'",
+            "- 'Add bookmark and continue playing'"
         ];
-        
+
         helpCommands.forEach(cmd => {
             addToCommandHistory('system', cmd);
         });
@@ -1801,7 +1923,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create history item element
         const historyItem = document.createElement('div');
         historyItem.className = `command-item ${role}-command`;
-        
+
         // For user commands, add a prefix
         if (role === 'user') {
             const prefix = document.createElement('span');
@@ -1809,17 +1931,17 @@ document.addEventListener('DOMContentLoaded', function() {
             prefix.textContent = '> ';
             historyItem.appendChild(prefix);
         }
-        
+
         const contentSpan = document.createElement('span');
         contentSpan.textContent = content;
         historyItem.appendChild(contentSpan);
-        
+
         // Add to history container
         commandHistory.appendChild(historyItem);
-        
+
         // Scroll to bottom
         commandHistory.scrollTop = commandHistory.scrollHeight;
-        
+
         // Add to commands history if it's a user command
         if (role === 'user') {
             commands.push(content);
@@ -2535,7 +2657,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Prepare application context
         const appState = buildApplicationState();
-
+        
         // Send command for interpretation
         interpretCommand(command, appState);
     }

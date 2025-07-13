@@ -160,74 +160,43 @@ def fallback_command_interpretation(command):
     Returns:
         dict: Structured command response
     """
-    command_lower = command.lower().strip()
+    command_lower = command.lower()
 
-    # Play command
-    if 'play' in command_lower and 'back' not in command_lower and 'speed' not in command_lower:
+    # Complex command patterns
+    if 'bookmark and play' in command_lower:
         return {
-            'intent': 'Start playing audio',
-            'action': 'play',
-            'parameters': {}
+            'intent': 'Add bookmark and continue playing',
+            'actions': [
+                {'action': 'add_bookmark', 'parameters': {'note': 'Quick bookmark'}},
+                {'action': 'play', 'parameters': {}, 'delay': 500}
+            ],
+            'execution_mode': 'sequential'
         }
 
-    # Pause/Stop command
-    elif 'pause' in command_lower or 'stop' in command_lower:
+    if 'transcribe and export' in command_lower:
         return {
-            'intent': 'Pause audio playback',
-            'action': 'pause',
-            'parameters': {}
+            'intent': 'Transcribe audio and export transcript',
+            'actions': [
+                {'action': 'transcribe', 'parameters': {}},
+                {'action': 'export_transcript', 'parameters': {}, 'delay': 2000}
+            ],
+            'execution_mode': 'sequential'
         }
 
-    # Seek command
-    elif any(phrase in command_lower for phrase in ['go to', 'seek to', 'jump to']):
-        import re
-        time_match = re.search(r'(\d+):(\d+)(?::(\d+))?', command_lower)
-        if time_match:
-            hours = int(time_match.group(3)) if time_match.group(3) else 0
-            minutes = int(time_match.group(1))
-            seconds = int(time_match.group(2))
-            return {
-                'intent': f'Jump to {hours:02d}:{minutes:02d}:{seconds:02d}',
-                'action': 'seek',
-                'parameters': {
-                    'timeString': f'{hours:02d}:{minutes:02d}:{seconds:02d}'
-                }
-            }
-
-    # Bookmark command
-    elif 'bookmark' in command_lower:
-        import re
-        title_match = re.search(r'bookmark\s+(.+)', command_lower)
-        title = title_match.group(1) if title_match else 'Bookmark'
+    # Single action patterns (existing logic)
+    if 'play' in command_lower:
         return {
-            'intent': f'Add bookmark: {title}',
-            'action': 'add_bookmark',
-            'parameters': {'title': title}
+            'intent': 'Play audio',
+            'actions': [{'action': 'play', 'parameters': {}}],
+            'execution_mode': 'sequential'
         }
 
-    # Transcribe command
-    elif 'transcribe' in command_lower:
-        return {
-            'intent': 'Transcribe audio',
-            'action': 'transcribe',
-            'parameters': {}
-        }
-
-    # Help command
-    elif 'help' in command_lower:
-        return {
-            'intent': 'Show command help',
-            'action': 'help',
-            'parameters': {}
-        }
-
-    # Default unknown action
+    # Default unknown
     return {
         'intent': 'Unknown command',
-        'action': 'unknown',
-        'parameters': {}
+        'actions': [{'action': 'unknown', 'parameters': {}}],
+        'execution_mode': 'sequential'
     }
-
 
 def parse_json_from_text(text):
     """
@@ -631,19 +600,26 @@ def interpret_command():
             ai_response = interpret_command_with_ai(command, app_state, command_history)
             if ai_response:
                 ai_response['execute'] = True
-                ai_response['message'] = f"Executing: {ai_response.get('intent', 'Unknown command')}"
+                ai_response['message'] = f"Executing plan: {ai_response.get('intent', 'Unknown command')}"
                 return jsonify(ai_response), 200
 
         # Fall back to rule-based interpretation
         fallback_response = fallback_command_interpretation(command)
-        fallback_response['execute'] = True
-        fallback_response['message'] = f"Executing: {fallback_response.get('intent', 'Unknown command')}"
+        # Convert single action to plan format for consistency
+        if 'action' in fallback_response:
+            fallback_response['actions'] = [{
+                'action': fallback_response.pop('action'),
+                'parameters': fallback_response.pop('parameters', {})
+            }]
+            fallback_response['execution_mode'] = 'sequential'
 
+        fallback_response['execute'] = True
+        fallback_response['message'] = f"Executing plan: {fallback_response.get('intent', 'Unknown command')}"
         return jsonify(fallback_response), 200
 
     except Exception as e:
         print(f"Error in command interpretation: {str(e)}")
-        return jsonify({'error': 'Error processing command', 'action': 'unknown'}), 200
+        return jsonify({'error': 'Error processing command', 'actions': [{'action': 'unknown', 'parameters': {}}]}), 200
 
 
 def interpret_command_with_ai(command, app_state, command_history):
@@ -660,6 +636,7 @@ def interpret_command_with_ai(command, app_state, command_history):
     """
     system_prompt = """
     You are a command interpreter for an audio player web application.
+    Your job is to convert natural language commands into structured actions or plans.
     The application allows users to:
     - Play/pause audio
     - Seek to specific times
@@ -669,49 +646,95 @@ def interpret_command_with_ai(command, app_state, command_history):
     - Search within transcripts
     - Change playback speed
 
-    Your job is to convert natural language commands into structured actions.
+    You can now handle complex commands that require multiple actions in sequence.
 
     Return a JSON object with:
     1. "intent": A brief description of what the user wants
-    2. "action": One of these actions:
-       ["play", "pause", "seek", "add_bookmark", "transcribe", "export_transcript",
-        "export_bookmarks", "skip_forward", "skip_backward", "change_playback_speed",
-        "find_in_transcript", "upload_prompt", "help", "unknown"]
-    3. "parameters": An object with relevant parameters for the action
+    2. "actions": An array of action objects, each containing:
+       - "action": The specific action to perform
+       - "parameters": Parameters for that action
+       - "delay": Optional delay in milliseconds before executing this action
+    3. "execution_mode": Either "sequential" or "parallel"
 
-    Example response:
+    Single action example:
     {
-      "intent": "Jump to 2 minutes 30 seconds",
-      "action": "seek",
-      "parameters": {
-        "timeString": "00:02:30"
-      }
+      "intent": "Play audio",
+      "actions": [
+        {
+          "action": "play",
+          "parameters": {}
+        }
+      ],
+      "execution_mode": "sequential"
+    }
+
+    Multiple actions example:
+    {
+      "intent": "Jump to 2 minutes, add bookmark, then continue playing",
+      "actions": [
+        {
+          "action": "seek",
+          "parameters": {"timeString": "00:02:00"}
+        },
+        {
+          "action": "add_bookmark",
+          "parameters": {"note": "Important section"},
+          "delay": 500
+        },
+        {
+          "action": "play",
+          "parameters": {},
+          "delay": 1000
+        }
+      ],
+      "execution_mode": "sequential"
     }
     """
 
     user_prompt = f"""
     Command: "{command}"
-
     Current app state:
     - Audio loaded: {app_state.get('isAudioLoaded', False)}
     - Currently playing: {app_state.get('isPlaying', False)}
-    - Current time: {app_state.get('currentTime', 0)}
+    - Current time: {app_state.get('currentTime', 0)} seconds
+    - Duration: {app_state.get('duration', 0)} seconds
     - Has transcript: {app_state.get('hasTranscript', False)}
     - Number of bookmarks: {app_state.get('bookmarksCount', 0)}
 
     Recent commands:
     {' '.join([f'- "{cmd}"' for cmd in command_history[-3:]])}
 
-    Parse this command and return the structured action JSON.
+    Parse this command and return a structured action plan. Consider:
+    - If the command involves multiple steps, create a sequential plan
+    - If actions can be done simultaneously, use parallel execution
+    - Add appropriate delays between actions when needed
+    - Break complex commands into logical steps
     """
 
     result = call_azure_openai(system_prompt, user_prompt, max_tokens=800, temperature=0.3)
 
     if result and 'choices' in result:
         content = result['choices'][0]['message']['content']
+        print(f'DEBUG: content')
         return parse_json_from_text(content)
 
     return None
+
+
+"""
+PLAN VALIDATION
+def validate_plan(plan_response, app_state):
+    Validate that the plan is executable given current state
+    if not app_state.get('isAudioLoaded', False):
+        # Filter out actions that require audio to be loaded
+        valid_actions = ['upload_prompt', 'help']
+        plan_response['actions'] = [
+            action for action in plan_response['actions']
+            if action['action'] in valid_actions
+        ]
+
+    return plan_response
+"""
 
 
 # =============================================================================
