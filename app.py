@@ -456,8 +456,8 @@ def generate_summary():
         return jsonify({'error': 'Azure OpenAI service not configured'}), 500
 
     try:
-        system_prompt = "You are a helpful assistant that summarizes transcripts. Your goal is to provide an exaustive summary, that cleary highlights relevant part/topics of the transcript."
-        user_prompt = f"""Generate a concise summary of the following transcript.
+        system_prompt = "You are a helpful assistant that summarizes transcripts of a podcast. Your goal is to provide an exaustive summary, that cleary highlights relevant part/topics of the transcript of the podcast. Rembember to refer to the transcript as podcast.."
+        user_prompt = f"""Generate a concise summary of the following podcast transcript.
         Follow these guidelines: Put a short paragraph at the beginning with a general overview, make a concise summary, prefer bullet points style, add links/references if needed.
         Summarize the transcript:
         {transcript_text}
@@ -469,11 +469,14 @@ def generate_summary():
 
         if result and 'choices' in result:
             print(result)
-            summary = result["choices"][0]["message"]["content"].strip()
+            markdown_summary = result["choices"][0]["message"]["content"].strip()
 
             # Convert Markdown to HTML
-            html_summary = markdown.markdown(summary)
-            return jsonify({'summary': html_summary})
+            html_summary = markdown.markdown(markdown_summary)
+            return jsonify({
+                'markdown': markdown_summary,  # Use consistent key
+                'html': html_summary
+            })
         else:
             return jsonify({'error': 'Failed to generate summary'}), 500
 

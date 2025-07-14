@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const summaryText = document.getElementById('summaryText');
     const noSummaryMessage = document.getElementById('noSummaryMessage');
     const summaryLoading = document.getElementById('summaryLoading');
+    const exportSummartBtn = document.getElementById('exportSummaryBtn');
     
     // Chat Elements
     const chatContainer = document.getElementById('chatContainer');
@@ -89,7 +90,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Bookmarks
     let bookmarkCounter = 1;
-    
+   
+    // Summary
+    let currentSummaryMarkdown = "";
+
     // PTT State
     let wasPlayingBeforePTT = false;
     let mediaRecorder;
@@ -145,7 +149,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Summary Event Listeners
     generateSummaryBtn.addEventListener('click', generateSummary);
-    
+    exportSummaryBtn.addEventListener('click', exportSummary);
+
     // Chat Event Listeners
     sendChatBtn.addEventListener('click', sendChatMessage);
     resetChatBtn.addEventListener('click', resetChat);
@@ -1297,13 +1302,23 @@ document.addEventListener('DOMContentLoaded', function() {
             // Hide loading indicator
             summaryLoading.style.display = 'none';
 
-            if (data.summary) {
+            if (data.html && data.markdown) {
+                // Store the original markdown
+                currentSummaryMarkdown = data.markdown;
+
                 // Display the summary as HTML
-                summaryText.innerHTML = data.summary;
+                summaryText.innerHTML = data.html;
                 summaryText.style.display = 'block';
+
+                // Enable export button
+                document.getElementById('exportSummaryBtn').disabled = false;
+
                 showMessage('Summary generated successfully');
-            } else {
+            } else if (data.error) {
                 showMessage('Error: ' + data.error);
+                noSummaryMessage.style.display = 'block';
+            } else {
+                showMessage('Unknown error generating summary');
                 noSummaryMessage.style.display = 'block';
             }
 
@@ -1317,6 +1332,36 @@ document.addEventListener('DOMContentLoaded', function() {
             noSummaryMessage.style.display = 'block';
             generateSummaryBtn.disabled = false;
         });
+    }
+
+    // Add after the generateSummary function
+    function exportSummary() {
+        if (!currentSummaryMarkdown || currentSummaryMarkdown.trim() === "") {
+            showMessage('No summary available to export');
+            return;
+        }
+
+        // Get the audio filename (without extension) for use in the export filename
+        const audioName = currentFile ? currentFile.name.replace(/\.[^/.]+$/, "") : "audio";
+        const filename = `${audioName}_summary.md`;
+
+        // Create Blob and download link
+        const blob = new Blob([currentSummaryMarkdown], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        
+        // Append, click and remove
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage('Summary exported as Markdown');
+        }, 100);
     }
 
     // ========================================
