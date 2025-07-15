@@ -544,10 +544,11 @@ def chat():
 
     try:
         # Build conversation messages
+        prompt_chat = "You are a helpful smart assistant. Use the following transcript as context for answering questions"
         messages = [
             {
                 "role": "system",
-                "content": f"You are a helpful assistant. Use the following transcript as context for answering questions: {transcript_context}"
+                "content": f"{prompt_chat}: {transcript_context}"
             }
         ]
 
