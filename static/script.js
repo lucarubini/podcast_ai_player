@@ -474,7 +474,8 @@ document.addEventListener('DOMContentLoaded', function() {
             text: relevantText,
             timeFormatted: formatTime(currentTime),
             title: `Bookmark ${bookmarkCounter}`,
-            comments: ''
+            comments: '',
+            aiGenerated: false
         };
 
         bookmarks.push(bookmark);
@@ -611,10 +612,17 @@ document.addEventListener('DOMContentLoaded', function() {
         generateCommentsBtn.className = 'bookmark-generate-comments';
         generateCommentsBtn.textContent = '🤖';
         generateCommentsBtn.title = 'Generate AI comments';
-        generateCommentsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            generateBookmarkComments(bookmark.id);
-        });
+        
+        if (bookmark.aiGenerated) {
+            generateCommentsBtn.style.opacity = '0.5';
+            generateCommentsBtn.style.cursor = 'not-allowed';
+            generateCommentsBtn.title = 'AI comments already generated';
+        } else {
+            generateCommentsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                generateBookmarkComments(bookmark.id);
+            });
+        }
 
         // Copy to notes button
         const copyBtn = document.createElement('span');
@@ -700,16 +708,6 @@ document.addEventListener('DOMContentLoaded', function() {
      * @returns {Promise<string>} The prompt template text
      */
     async function loadPromptTemplate() {
-        try {
-            const response = await fetch('prompts/smart_bookmark.txt');
-            if (response.ok) {
-                return await response.text();
-            }
-        } catch (error) {
-            console.warn('Could not load prompt file, using default:', error);
-        }
-
-        // Fallback to default prompt
         return `Generate a brief, insightful comment about this audio transcript segment. Focus on key points, themes, or important information. Keep it concise (1-2 sentences):
 
     "{{bookmark_text}}"`;
@@ -723,6 +721,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const bookmark = bookmarks.find(b => b.id === id);
         if (!bookmark) return;
 
+        // Check if AI generation has already been done
+        if (bookmark.aiGenerated) {
+            showMessage('AI comments already generated for this bookmark');
+            return;
+        }
+
         const bookmarkEl = document.querySelector(`.bookmark-item[data-id="${id}"]`);
         const commentsEl = bookmarkEl.querySelector('.bookmark-comments');
 
@@ -730,32 +734,31 @@ document.addEventListener('DOMContentLoaded', function() {
         commentsEl.innerHTML = '<div class="loading-indicator"><div class="loading-spinner"></div><p>Generating comments...</p></div>';
 
         try {
-            // Load prompt from file
-            const promptTemplate = await loadPromptTemplate();
-
-            // Replace placeholder with actual bookmark text
-            const prompt = promptTemplate.replace('{{bookmark_text}}', bookmark.text);
-
-            // Make API call
-            const response = await fetch(`${API_URL}/generate_summary`, {
+            // Include existing comments in request
+            const response = await fetch(`${API_URL}/generate_bookmark_comment`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    transcript_text: prompt
+                    transcript_text: bookmark.text,
+                    existing_comment: bookmark.comments || ''
                 })
             });
 
             const data = await response.json();
 
-            if (data.summary) {
+            if (data.comment) {
                 // Update bookmark with generated comments
-                bookmark.comments = data.summary;
+                bookmark.comments = data.comment;
+
+                // Set AI generation flag
+                bookmark.aiGenerated = true;
+
                 displayBookmarks();
                 showMessage('AI comments generated');
             } else {
-                showMessage('Error generating comments: ' + data.error);
+                showMessage('Error generating comments: ' + (data.error || 'No comment generated'));
                 displayBookmarks();
             }
         } catch (error) {
@@ -1780,7 +1783,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
 
                     // Use provided title or note, or generate one
-                    const bookmarkTitle = parameters.title || parameters.note || 'bookmark';
+                    const bookmarkTitle = `Bookmark ${bookmarkCounter}`;
 
                     // Get current position
                     const currentTime = audioElement.currentTime;
@@ -1798,6 +1801,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         title: bookmarkTitle
                     };
 
+                    bookmarkCounter++;
                     bookmarks.push(bookmark);
                     displayBookmarks();
                     exportBookmarksBtn.disabled = bookmarks.length === 0;
@@ -2445,7 +2449,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create save button (only for assistant messages)
             const saveBtn = document.createElement('button');
             saveBtn.className = 'chat-save-note-btn';
-            saveBtn.innerHTML = '📝';
+            saveBtn.innerHTML = '📋';
             saveBtn.title = 'Save to notes';
             saveBtn.addEventListener('click', function() {
                 saveMessageToNotes(content);

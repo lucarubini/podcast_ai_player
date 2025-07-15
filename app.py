@@ -486,14 +486,9 @@ def generate_summary():
 
 @app.route('/generate_bookmark_comment', methods=['POST'])
 def generate_bookmark_comment():
-    """
-    Generate an AI-powered comment for a bookmark based on transcript segment.
-
-    Returns:
-        JSON response with comment or error message
-    """
     data = request.json
     transcript_text = data.get('transcript_text')
+    existing_comment = data.get('existing_comment', '')  # Get existing comment
 
     if not transcript_text:
         return jsonify({'error': 'No transcript provided'}), 400
@@ -514,7 +509,14 @@ def generate_bookmark_comment():
         result = call_azure_openai(system_prompt, user_prompt, max_tokens=150)
 
         if result and 'choices' in result:
-            comment = result["choices"][0]["message"]["content"].strip()
+            new_comment = result["choices"][0]["message"]["content"].strip()
+
+            # Append new comment to existing one if it exists
+            if existing_comment:
+                comment = f"{existing_comment}\n\n[Additional AI Insights]:\n{new_comment}"
+            else:
+                comment = new_comment
+
             return jsonify({'comment': comment})
         else:
             return jsonify({'error': 'Failed to generate comment'}), 500

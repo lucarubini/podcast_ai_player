@@ -508,6 +508,15 @@ h1 {
     font-size: 0.8em;
 }
 
+.bookmark-generate-comments[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bookmark-generate-comments[disabled]:hover {
+    background-color: transparent;
+}
+
 /* =============================================================================
    SUMMARY SECTION
    ============================================================================= */
