@@ -90,7 +90,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Bookmarks
     let bookmarkCounter = 1;
-   
+
+    // Note
+    let noteCounter = 1;
+
     // Summary
     let currentSummaryMarkdown = "";
 
@@ -2026,7 +2029,8 @@ document.addEventListener('DOMContentLoaded', function() {
      * Prompts for title and creates empty note for editing
      */
     function addNewNote() {
-        const title = prompt('Enter a title for your note:', 'Note') || 'Note';
+        const title = `Note ${noteCounter}`;
+        noteCounter++;
         createNote(title, '');
     }
 
@@ -2047,10 +2051,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add to notes array
         notes.push(note);
-        
+
         // Display updated notes
         displayNotes();
-       
+        showMessage('Note added');
+
         // If content is empty, immediately put the note in edit mode
         if (!content) {
             setTimeout(() => {
@@ -2072,6 +2077,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear current notes display
         // Preserve the message element
         noNotesMessage.style.display = notes.length === 0 ? 'block' : 'none';
+        notesContent.innerHTML = ''; // Clear container
         
         // Show/hide no notes message
         if (notes.length === 0) {
@@ -2097,6 +2103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             titleEl.className = 'note-title';
             titleEl.textContent = note.title;
             
+
             const actionsEl = document.createElement('div');
             actionsEl.className = 'note-actions';
             
@@ -2121,6 +2128,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const contentEl = document.createElement('div');
             contentEl.className = 'note-content';
             contentEl.textContent = note.content;
+            contentEl.innerHTML = note.content.replace(/\n/g, '<br>'); // Preserve line breaks
             
             noteEl.appendChild(noteHeader);
             noteEl.appendChild(contentEl);
