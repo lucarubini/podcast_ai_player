@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const summaryText = document.getElementById('summaryText');
     const noSummaryMessage = document.getElementById('noSummaryMessage');
     const summaryLoading = document.getElementById('summaryLoading');
+    const exportSummartBtn = document.getElementById('exportSummaryBtn');
     
     // Chat Elements
     const chatContainer = document.getElementById('chatContainer');
@@ -89,7 +90,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Bookmarks
     let bookmarkCounter = 1;
-    
+
+    // Note
+    let noteCounter = 1;
+
+    // Summary
+    let currentSummaryMarkdown = "";
+
     // PTT State
     let wasPlayingBeforePTT = false;
     let mediaRecorder;
@@ -145,7 +152,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Summary Event Listeners
     generateSummaryBtn.addEventListener('click', generateSummary);
-    
+    exportSummaryBtn.addEventListener('click', exportSummary);
+
     // Chat Event Listeners
     sendChatBtn.addEventListener('click', sendChatMessage);
     resetChatBtn.addEventListener('click', resetChat);
@@ -469,7 +477,8 @@ document.addEventListener('DOMContentLoaded', function() {
             text: relevantText,
             timeFormatted: formatTime(currentTime),
             title: `Bookmark ${bookmarkCounter}`,
-            comments: ''
+            comments: '',
+            aiGenerated: false
         };
 
         bookmarks.push(bookmark);
@@ -507,25 +516,26 @@ document.addEventListener('DOMContentLoaded', function() {
      * Displays all bookmarks in the bookmarks container
      */
     function displayBookmarks() {
-        bookmarksContent.innerHTML = '';
+        // Preserve the message element
+        noBookmarksMessage.style.display = bookmarks.length === 0 ? 'block' : 'none';
 
-        // Handle empty bookmarks state
-        if (bookmarks.length === 0) {
-            noBookmarksMessage.style.display = 'block';
+        // Clear only bookmark items
+        const existingBookmarks = bookmarksContent.querySelectorAll('.bookmark-item');
+        existingBookmarks.forEach(el => el.remove());
+
+        // Add bookmarks if they exist
+        if (bookmarks.length > 0) {
+            exportBookmarksBtn.disabled = false;
+            bookmarks.sort((a, b) => a.time - b.time);
+            bookmarks.forEach(bookmark => {
+                const bookmarkEl = createBookmarkElement(bookmark);
+                bookmarksContent.appendChild(bookmarkEl);
+            });
+        } else {
             exportBookmarksBtn.disabled = true;
-            return;
         }
-
-        noBookmarksMessage.style.display = 'none';
-        exportBookmarksBtn.disabled = false;
-
-        // Sort bookmarks by time and display
-        bookmarks.sort((a, b) => a.time - b.time);
-        bookmarks.forEach(bookmark => {
-            const bookmarkEl = createBookmarkElement(bookmark);
-            bookmarksContent.appendChild(bookmarkEl);
-        });
     }
+
 
     /**
      * Creates a DOM element for a bookmark
@@ -605,10 +615,17 @@ document.addEventListener('DOMContentLoaded', function() {
         generateCommentsBtn.className = 'bookmark-generate-comments';
         generateCommentsBtn.textContent = '🤖';
         generateCommentsBtn.title = 'Generate AI comments';
-        generateCommentsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            generateBookmarkComments(bookmark.id);
-        });
+        
+        if (bookmark.aiGenerated) {
+            generateCommentsBtn.style.opacity = '0.5';
+            generateCommentsBtn.style.cursor = 'not-allowed';
+            generateCommentsBtn.title = 'AI comments already generated';
+        } else {
+            generateCommentsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                generateBookmarkComments(bookmark.id);
+            });
+        }
 
         // Copy to notes button
         const copyBtn = document.createElement('span');
@@ -694,16 +711,6 @@ document.addEventListener('DOMContentLoaded', function() {
      * @returns {Promise<string>} The prompt template text
      */
     async function loadPromptTemplate() {
-        try {
-            const response = await fetch('prompts/smart_bookmark.txt');
-            if (response.ok) {
-                return await response.text();
-            }
-        } catch (error) {
-            console.warn('Could not load prompt file, using default:', error);
-        }
-
-        // Fallback to default prompt
         return `Generate a brief, insightful comment about this audio transcript segment. Focus on key points, themes, or important information. Keep it concise (1-2 sentences):
 
     "{{bookmark_text}}"`;
@@ -717,6 +724,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const bookmark = bookmarks.find(b => b.id === id);
         if (!bookmark) return;
 
+        // Check if AI generation has already been done
+        if (bookmark.aiGenerated) {
+            showMessage('AI comments already generated for this bookmark');
+            return;
+        }
+
         const bookmarkEl = document.querySelector(`.bookmark-item[data-id="${id}"]`);
         const commentsEl = bookmarkEl.querySelector('.bookmark-comments');
 
@@ -724,32 +737,31 @@ document.addEventListener('DOMContentLoaded', function() {
         commentsEl.innerHTML = '<div class="loading-indicator"><div class="loading-spinner"></div><p>Generating comments...</p></div>';
 
         try {
-            // Load prompt from file
-            const promptTemplate = await loadPromptTemplate();
-
-            // Replace placeholder with actual bookmark text
-            const prompt = promptTemplate.replace('{{bookmark_text}}', bookmark.text);
-
-            // Make API call
-            const response = await fetch(`${API_URL}/generate_summary`, {
+            // Include existing comments in request
+            const response = await fetch(`${API_URL}/generate_bookmark_comment`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    transcript_text: prompt
+                    transcript_text: bookmark.text,
+                    existing_comment: bookmark.comments || ''
                 })
             });
 
             const data = await response.json();
 
-            if (data.summary) {
+            if (data.comment) {
                 // Update bookmark with generated comments
-                bookmark.comments = data.summary;
+                bookmark.comments = data.comment;
+
+                // Set AI generation flag
+                bookmark.aiGenerated = true;
+
                 displayBookmarks();
                 showMessage('AI comments generated');
             } else {
-                showMessage('Error generating comments: ' + data.error);
+                showMessage('Error generating comments: ' + (data.error || 'No comment generated'));
                 displayBookmarks();
             }
         } catch (error) {
@@ -1243,6 +1255,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========================================
 
     /**
+     * Convert Markdown to HTML
+     */
+    function markdownToHtml(markdown) {
+        return markdown
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+            .replace(/!\[(.*?)\]\((.*?)\)/gim, '<img alt="$1" src="$2">')
+            .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2">$1</a>')
+            .replace(/\n- (.*?)(?=\n|$)/gim, '<ul><li>$1</li></ul>')
+            .replace(/\n\* (.*?)(?=\n|$)/gim, '<ul><li>$1</li></ul>')
+            .replace(/\n\d+\. (.*?)(?=\n|$)/gim, '<ol><li>$1</li></ol>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+    }
+
+    /**
      * Generate AI summary of the entire transcript
      */
     function generateSummary() {
@@ -1277,13 +1308,23 @@ document.addEventListener('DOMContentLoaded', function() {
             // Hide loading indicator
             summaryLoading.style.display = 'none';
 
-            if (data.summary) {
-                // Display the summary
-                summaryText.textContent = data.summary;
+            if (data.html && data.markdown) {
+                // Store the original markdown
+                currentSummaryMarkdown = data.markdown;
+
+                // Display the summary as HTML
+                summaryText.innerHTML = data.html;
                 summaryText.style.display = 'block';
+
+                // Enable export button
+                document.getElementById('exportSummaryBtn').disabled = false;
+
                 showMessage('Summary generated successfully');
-            } else {
+            } else if (data.error) {
                 showMessage('Error: ' + data.error);
+                noSummaryMessage.style.display = 'block';
+            } else {
+                showMessage('Unknown error generating summary');
                 noSummaryMessage.style.display = 'block';
             }
 
@@ -1297,6 +1338,36 @@ document.addEventListener('DOMContentLoaded', function() {
             noSummaryMessage.style.display = 'block';
             generateSummaryBtn.disabled = false;
         });
+    }
+
+    // Add after the generateSummary function
+    function exportSummary() {
+        if (!currentSummaryMarkdown || currentSummaryMarkdown.trim() === "") {
+            showMessage('No summary available to export');
+            return;
+        }
+
+        // Get the audio filename (without extension) for use in the export filename
+        const audioName = currentFile ? currentFile.name.replace(/\.[^/.]+$/, "") : "audio";
+        const filename = `${audioName}_summary.md`;
+
+        // Create Blob and download link
+        const blob = new Blob([currentSummaryMarkdown], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        
+        // Append, click and remove
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage('Summary exported as Markdown');
+        }, 100);
     }
 
     // ========================================
@@ -1441,21 +1512,30 @@ document.addEventListener('DOMContentLoaded', function() {
      * Sets up the command container toggle functionality
      * Handles expanding/collapsing the command panel and persists state
      */
+
+    // =============================================================================
+    // Plan Execution State
+    // =============================================================================
+    let currentPlanExecution = {
+        isExecuting: false,
+        currentPlan: null
+    };
+
     function setupCommandToggle() {
         const commandContent = document.getElementById('commandContent');
-        
+
         if (!commandToggleIcon || !commandContent) return;
-        
+
         // Set up the click handler
         document.querySelector('.command-header .header-with-toggle').addEventListener('click', function() {
             commandToggleIcon.textContent = commandToggleIcon.textContent === '▼' ? '►' : '▼';
             commandContent.classList.toggle('collapsed');
-            
+
             // Save the state to localStorage
             const isCollapsed = commandContent.classList.contains('collapsed');
             localStorage.setItem('commandsCollapsed', isCollapsed);
         });
-        
+
         // Initialize based on saved state
         const savedState = localStorage.getItem('commandsCollapsed');
         if (savedState === 'true') {
@@ -1467,26 +1547,27 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Executes a command from the command input
      * Handles API communication and command interpretation
+     * Now supports both single actions and action plans
      */
     function executeCommand() {
-        if (isExecutingCommand) return;
-        
+        if (isExecutingCommand || currentPlanExecution.isExecuting) return;
+
         const command = commandInput.value.trim();
         if (!command) return;
-        
+
         // Clear input
         commandInput.value = '';
-        
+
         // Add command to history UI
         addToCommandHistory('user', command);
-        
+
         // Set executing state
         isExecutingCommand = true;
         executeCommandBtn.disabled = true;
-        
+
         // Show processing indicator
         addToCommandHistory('system', 'Processing command...');
-        
+
         // Get current application state for context
         const appState = {
             isAudioLoaded: !!audioElement.src,
@@ -1498,7 +1579,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fileName: currentFile ? currentFile.name : null,
             fileId: fileId
         };
-        
+
         // Make API request to interpret command
         fetch(`${API_URL}/interpret_command`, {
             method: 'POST',
@@ -1517,12 +1598,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 addToCommandHistory('system', `Error: ${data.error}`);
                 return;
             }
-            
+
             // Show detected intent in history
+            console.log(command);
             addToCommandHistory('system', `Intent detected: ${data.intent}`);
-            
-            // Execute the command based on the interpreted action
-            executeAction(data.action, data.parameters);
+
+            // Check if this is a plan (multiple actions) or single action
+            if (data.actions && Array.isArray(data.actions)) {
+                // Execute the plan
+                executePlan(data);
+            } else if (data.action) {
+                // Legacy single action support
+                executeAction(data.action, data.parameters);
+            } else {
+                addToCommandHistory('system', 'No valid action found in command response');
+            }
         })
         .catch(error => {
             console.error('Command interpretation error:', error);
@@ -1535,215 +1625,312 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // =============================================================================
+    // Plan Execution Functions
+    // =============================================================================
+
+    /**
+     * Executes a plan containing multiple actions
+     * Supports both sequential and parallel execution
+     */
+    async function executePlan(planResponse) {
+        if (currentPlanExecution.isExecuting) {
+            addToCommandHistory('system', 'Another plan is already executing, please wait...');
+            return;
+        }
+        
+        currentPlanExecution.isExecuting = true;
+        currentPlanExecution.currentPlan = planResponse;
+        
+        try {
+            addToCommandHistory('system', `Executing plan: ${planResponse.intent}`);
+            
+            if (planResponse.execution_mode === 'parallel') {
+                await executeActionsParallel(planResponse.actions);
+            } else {
+                await executeActionsSequential(planResponse.actions);
+            }
+            
+            addToCommandHistory('system', 'Plan execution completed successfully');
+        } catch (error) {
+            console.error('Plan execution failed:', error);
+            addToCommandHistory('system', `Plan execution failed: ${error.message}`);
+        } finally {
+            currentPlanExecution.isExecuting = false;
+            currentPlanExecution.currentPlan = null;
+        }
+    }
+
+    /**
+     * Executes actions one after another with optional delays
+     */
+    async function executeActionsSequential(actions) {
+        for (let i = 0; i < actions.length; i++) {
+            const actionItem = actions[i];
+            
+            // Add delay if specified
+            if (actionItem.delay) {
+                addToCommandHistory('system', `Waiting ${actionItem.delay}ms before next action...`);
+                await sleep(actionItem.delay);
+            }
+            
+            // Execute the action
+            addToCommandHistory('system', `Executing step ${i + 1}/${actions.length}: ${actionItem.action}`);
+            await executeActionAsync(actionItem.action, actionItem.parameters);
+        }
+    }
+
+    /**
+     * Executes actions simultaneously
+     */
+    async function executeActionsParallel(actions) {
+        addToCommandHistory('system', `Executing ${actions.length} actions simultaneously...`);
+        
+        const promises = actions.map(async (actionItem, index) => {
+            if (actionItem.delay) {
+                await sleep(actionItem.delay);
+            }
+            
+            addToCommandHistory('system', `Parallel action ${index + 1}: ${actionItem.action}`);
+            return executeActionAsync(actionItem.action, actionItem.parameters);
+        });
+        
+        await Promise.all(promises);
+    }
+
+    /**
+     * Async wrapper for executeAction to support plan execution
+     */
+    async function executeActionAsync(action, parameters) {
+        return new Promise((resolve, reject) => {
+            try {
+                executeAction(action, parameters);
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Utility function for delays
+     */
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     /**
      * Executes a specific action based on interpreted command
      * Main command dispatcher for all audio player actions
+     * Enhanced with better error handling for plan execution
      */
     function executeAction(action, parameters) {
-        switch (action) {
-            case 'play':
-                if (audioElement.src) {
-                    audioElement.play();
-                    isPlaying = true;
-                    playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
-                    addToCommandHistory('system', 'Playing audio');
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'pause':
-                if (audioElement.src) {
-                    audioElement.pause();
-                    isPlaying = false;
-                    playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-                    addToCommandHistory('system', 'Paused audio');
-                }
-                break;
-                
-            case 'seek':
-                if (audioElement.src) {
-                    let seekTime = 0;
-                    
-                    if (parameters.timeString) {
-                        // Convert time string (HH:MM:SS) to seconds
-                        const timeParts = parameters.timeString.split(':').map(Number);
-                        if (timeParts.length === 3) {
-                            seekTime = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
-                        } else if (timeParts.length === 2) {
-                            seekTime = timeParts[0] * 60 + timeParts[1];
-                        } else {
-                            seekTime = timeParts[0];
-                        }
-                    } else if (parameters.seconds !== undefined) {
-                        seekTime = parameters.seconds;
-                    } else if (parameters.percentage) {
-                        seekTime = audioElement.duration * (parameters.percentage / 100);
-                    }
-                    
-                    // Ensure time is within valid range
-                    seekTime = Math.min(Math.max(0, seekTime), audioElement.duration || 0);
-                    
-                    audioElement.currentTime = seekTime;
-                    addToCommandHistory('system', `Jumped to ${formatTime(seekTime)}`);
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'add_bookmark':
-                if (segments.length === 0) {
-                    addToCommandHistory('system', 'Please transcribe audio first before adding bookmarks');
-                    return;
-                }
-                
-                // Use provided title or generate one
-                const bookmarkTitle = 'bookmark';
-                
-                // Get current position
-                const currentTime = audioElement.currentTime;
-                const bookmarkId = Date.now();
-                
-                // Find relevant transcript text
-                const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
-                
-                // Create and add bookmark
-                const bookmark = {
-                    id: bookmarkId,
-                    time: currentTime,
-                    text: relevantText,
-                    timeFormatted: formatTime(currentTime),
-                    title: bookmarkTitle
-                };
-                
-                bookmarks.push(bookmark);
-                displayBookmarks();
-                exportBookmarksBtn.disabled = bookmarks.length === 0;
-                
-                addToCommandHistory('system', `Added bookmark at ${formatTime(currentTime)}`);
-                break;
-                
-            case 'transcribe':
-                if (!fileId) {
-                    addToCommandHistory('system', 'Please upload an audio file first');
-                    return;
-                }
-                
-                // Call the existing transcribe function
-                addToCommandHistory('system', 'Starting transcription process...');
-                
-                // Start transcription (reusing existing function)
-                transcribeAudio();
-                break;
-                
-            case 'upload_prompt':
-                // Just show a message instructing user to use file upload
-                addToCommandHistory('system', 'To upload a file, click the "Select File" button or drag and drop an audio file to the upload area');
-                break;
-                
-            case 'export_transcript':
-                if (segments.length === 0) {
-                    addToCommandHistory('system', 'No transcript available to export');
-                    return;
-                }
-                
-                exportTranscript();
-                addToCommandHistory('system', 'Transcript exported successfully');
-                break;
-                
-            case 'export_bookmarks':
-                if (bookmarks.length === 0) {
-                    addToCommandHistory('system', 'No bookmarks to export');
-                    return;
-                }
-                
-                exportBookmarks();
-                addToCommandHistory('system', 'Bookmarks exported successfully');
-                break;
-                
-            case 'skip_forward':
-                if (audioElement.src) {
-                    const skipAmount = parameters.seconds || 10; // Default to 10 seconds
-                    const newTime = Math.min(audioElement.currentTime + skipAmount, audioElement.duration);
-                    audioElement.currentTime = newTime;
-                    addToCommandHistory('system', `Skipped forward ${skipAmount} seconds`);
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'skip_backward':
-                if (audioElement.src) {
-                    const skipAmount = parameters.seconds || 10; // Default to 10 seconds
-                    const newTime = Math.max(audioElement.currentTime - skipAmount, 0);
-                    audioElement.currentTime = newTime;
-                    addToCommandHistory('system', `Skipped backward ${skipAmount} seconds`);
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'change_playback_speed':
-                if (audioElement.src) {
-                    const newSpeed = parameters.speed || 1.0;
-                    // Limit to reasonable range
-                    const limitedSpeed = Math.min(Math.max(0.25, newSpeed), 3.0);
-                    audioElement.playbackRate = limitedSpeed;
-                    addToCommandHistory('system', `Changed playback speed to ${limitedSpeed}x`);
-                } else {
-                    addToCommandHistory('system', 'No audio file loaded');
-                }
-                break;
-                
-            case 'find_in_transcript':
-                if (segments.length === 0) {
-                    addToCommandHistory('system', 'No transcript available to search');
-                    return;
-                }
-                
-                const searchTerm = parameters.searchTerm;
-                if (!searchTerm) {
-                    addToCommandHistory('system', 'No search term provided');
-                    return;
-                }
-                
-                const results = searchTranscript(searchTerm);
-                if (results.length === 0) {
-                    addToCommandHistory('system', `No matches found for "${searchTerm}"`);
-                } else {
-                    addToCommandHistory('system', `Found ${results.length} matches for "${searchTerm}"`);
-                    
-                    // If there's a specific occurrence requested
-                    if (parameters.occurrence && parameters.occurrence <= results.length) {
-                        const selectedResult = results[parameters.occurrence - 1];
-                        audioElement.currentTime = selectedResult.start;
-                        addToCommandHistory('system', `Jumped to occurrence ${parameters.occurrence} at ${formatTime(selectedResult.start)}`);
+        try {
+            switch (action) {
+                case 'play':
+                    if (audioElement.src) {
+                        audioElement.play();
+                        isPlaying = true;
+                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+                        addToCommandHistory('system', 'Playing audio');
                     } else {
-                        // Otherwise, show the first few results
-                        const displayResults = results.slice(0, 3);
-                        displayResults.forEach((result, i) => {
-                            addToCommandHistory('system', `${i+1}. [${formatTime(result.start)}]: "${result.text}"`);
-                        });
-                        
-                        if (results.length > 3) {
-                            addToCommandHistory('system', `...and ${results.length - 3} more matches`);
-                        }
-                        
-                        // Jump to the first occurrence
-                        audioElement.currentTime = results[0].start;
-                        addToCommandHistory('system', `Jumped to first occurrence at ${formatTime(results[0].start)}`);
+                        addToCommandHistory('system', 'No audio file loaded');
                     }
-                }
-                break;
-                
-            case 'help':
-                showCommandHelp();
-                break;
-                
-            case 'unknown':
-            default:
-                addToCommandHistory('system', 'Sorry, I don\'t understand that command. Type "help" to see available commands.');
-                break;
+                    break;
+
+                case 'pause':
+                    if (audioElement.src) {
+                        audioElement.pause();
+                        isPlaying = false;
+                        playPauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+                        addToCommandHistory('system', 'Paused audio');
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'seek':
+                    if (audioElement.src) {
+                        let seekTime = 0;
+
+                        if (parameters.timeString) {
+                            // Convert time string (HH:MM:SS) to seconds
+                            const timeParts = parameters.timeString.split(':').map(Number);
+                            if (timeParts.length === 3) {
+                                seekTime = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
+                            } else if (timeParts.length === 2) {
+                                seekTime = timeParts[0] * 60 + timeParts[1];
+                            } else {
+                                seekTime = timeParts[0];
+                            }
+                        } else if (parameters.seconds !== undefined) {
+                            seekTime = parameters.seconds;
+                        } else if (parameters.percentage) {
+                            seekTime = audioElement.duration * (parameters.percentage / 100);
+                        }
+
+                        // Ensure time is within valid range
+                        seekTime = Math.min(Math.max(0, seekTime), audioElement.duration || 0);
+
+                        audioElement.currentTime = seekTime;
+                        addToCommandHistory('system', `Jumped to ${formatTime(seekTime)}`);
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'add_bookmark':
+                    if (segments.length === 0) {
+                        addToCommandHistory('system', 'Please transcribe audio first before adding bookmarks');
+                        return;
+                    }
+
+                    // Use provided title or note, or generate one
+                    const bookmarkTitle = `Bookmark ${bookmarkCounter}`;
+
+                    // Get current position
+                    const currentTime = audioElement.currentTime;
+                    const bookmarkId = Date.now();
+
+                    // Find relevant transcript text
+                    const relevantText = getRelevantTranscriptText(currentTime - 5, currentTime + 2);
+
+                    // Create and add bookmark
+                    const bookmark = {
+                        id: bookmarkId,
+                        time: currentTime,
+                        text: relevantText,
+                        timeFormatted: formatTime(currentTime),
+                        title: bookmarkTitle
+                    };
+
+                    bookmarkCounter++;
+                    bookmarks.push(bookmark);
+                    displayBookmarks();
+                    exportBookmarksBtn.disabled = bookmarks.length === 0;
+
+                    addToCommandHistory('system', `Added bookmark "${bookmarkTitle}" at ${formatTime(currentTime)}`);
+                    break;
+
+                case 'transcribe':
+                    if (!fileId) {
+                        addToCommandHistory('system', 'Please upload an audio file first');
+                        return;
+                    }
+
+                    // Call the existing transcribe function
+                    addToCommandHistory('system', 'Starting transcription process...');
+                    transcribeAudio();
+                    break;
+
+                case 'upload_prompt':
+                    addToCommandHistory('system', 'To upload a file, click the "Select File" button or drag and drop an audio file to the upload area');
+                    break;
+
+                case 'export_transcript':
+                    if (segments.length === 0) {
+                        addToCommandHistory('system', 'No transcript available to export');
+                        return;
+                    }
+
+                    exportTranscript();
+                    addToCommandHistory('system', 'Transcript exported successfully');
+                    break;
+
+                case 'export_bookmarks':
+                    if (bookmarks.length === 0) {
+                        addToCommandHistory('system', 'No bookmarks to export');
+                        return;
+                    }
+
+                    exportBookmarks();
+                    addToCommandHistory('system', 'Bookmarks exported successfully');
+                    break;
+
+                case 'skip_forward':
+                    if (audioElement.src) {
+                        const skipAmount = parameters.seconds || 10;
+                        const newTime = Math.min(audioElement.currentTime + skipAmount, audioElement.duration);
+                        audioElement.currentTime = newTime;
+                        addToCommandHistory('system', `Skipped forward ${skipAmount} seconds`);
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'skip_backward':
+                    if (audioElement.src) {
+                        const skipAmount = parameters.seconds || 10;
+                        const newTime = Math.max(audioElement.currentTime - skipAmount, 0);
+                        audioElement.currentTime = newTime;
+                        addToCommandHistory('system', `Skipped backward ${skipAmount} seconds`);
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'change_playback_speed':
+                    if (audioElement.src) {
+                        const newSpeed = parameters.speed || 1.0;
+                        const limitedSpeed = Math.min(Math.max(0.25, newSpeed), 3.0);
+                        audioElement.playbackRate = limitedSpeed;
+                        addToCommandHistory('system', `Changed playback speed to ${limitedSpeed}x`);
+                    } else {
+                        addToCommandHistory('system', 'No audio file loaded');
+                    }
+                    break;
+
+                case 'find_in_transcript':
+                    if (segments.length === 0) {
+                        addToCommandHistory('system', 'No transcript available to search');
+                        return;
+                    }
+
+                    const searchTerm = parameters.searchTerm || parameters.query;
+                    if (!searchTerm) {
+                        addToCommandHistory('system', 'No search term provided');
+                        return;
+                    }
+
+                    const results = searchTranscript(searchTerm);
+                    if (results.length === 0) {
+                        addToCommandHistory('system', `No matches found for "${searchTerm}"`);
+                    } else {
+                        addToCommandHistory('system', `Found ${results.length} matches for "${searchTerm}"`);
+
+                        if (parameters.occurrence && parameters.occurrence <= results.length) {
+                            const selectedResult = results[parameters.occurrence - 1];
+                            audioElement.currentTime = selectedResult.start;
+                            addToCommandHistory('system', `Jumped to occurrence ${parameters.occurrence} at ${formatTime(selectedResult.start)}`);
+                        } else {
+                            const displayResults = results.slice(0, 3);
+                            displayResults.forEach((result, i) => {
+                                addToCommandHistory('system', `${i+1}. [${formatTime(result.start)}]: "${result.text}"`);
+                            });
+
+                            if (results.length > 3) {
+                                addToCommandHistory('system', `...and ${results.length - 3} more matches`);
+                            }
+
+                            audioElement.currentTime = results[0].start;
+                            addToCommandHistory('system', `Jumped to first occurrence at ${formatTime(results[0].start)}`);
+                        }
+                    }
+                    break;
+
+                case 'help':
+                    showCommandHelp();
+                    break;
+
+                case 'unknown':
+                default:
+                    addToCommandHistory('system', 'Sorry, I don\'t understand that command. Type "help" to see available commands.');
+                    break;
+            }
+        } catch (error) {
+            console.error(`Error executing action ${action}:`, error);
+            addToCommandHistory('system', `Error executing ${action}: ${error.message}`);
+            throw error; // Re-throw for plan execution error handling
         }
     }
 
@@ -1753,10 +1940,10 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function searchTranscript(term) {
         if (!term || segments.length === 0) return [];
-        
+
         const results = [];
         const termLower = term.toLowerCase();
-        
+
         segments.forEach(segment => {
             if (segment.text.toLowerCase().includes(termLower)) {
                 results.push({
@@ -1766,13 +1953,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
-        
+
         return results;
     }
 
     /**
      * Displays command help information
      * Shows available commands and their descriptions
+     * Updated with multi-action command examples
      */
     function showCommandHelp() {
         const helpCommands = [
@@ -1785,9 +1973,15 @@ document.addEventListener('DOMContentLoaded', function() {
             "- Export transcript/bookmarks",
             "- Change speed to [0.5-3x]",
             "- Find '[word/phrase]' in transcript",
-            "- Help (shows this message)"
+            "- Help (shows this message)",
+            "",
+            "🔗 Multi-Action Commands:",
+            "- 'Jump to 2:30, add bookmark, then play'",
+            "- 'Transcribe and export transcript'",
+            "- 'Pause, seek to beginning, then play'",
+            "- 'Add bookmark and continue playing'"
         ];
-        
+
         helpCommands.forEach(cmd => {
             addToCommandHistory('system', cmd);
         });
@@ -1801,7 +1995,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create history item element
         const historyItem = document.createElement('div');
         historyItem.className = `command-item ${role}-command`;
-        
+
         // For user commands, add a prefix
         if (role === 'user') {
             const prefix = document.createElement('span');
@@ -1809,17 +2003,17 @@ document.addEventListener('DOMContentLoaded', function() {
             prefix.textContent = '> ';
             historyItem.appendChild(prefix);
         }
-        
+
         const contentSpan = document.createElement('span');
         contentSpan.textContent = content;
         historyItem.appendChild(contentSpan);
-        
+
         // Add to history container
         commandHistory.appendChild(historyItem);
-        
+
         // Scroll to bottom
         commandHistory.scrollTop = commandHistory.scrollHeight;
-        
+
         // Add to commands history if it's a user command
         if (role === 'user') {
             commands.push(content);
@@ -1835,7 +2029,8 @@ document.addEventListener('DOMContentLoaded', function() {
      * Prompts for title and creates empty note for editing
      */
     function addNewNote() {
-        const title = prompt('Enter a title for your note:', 'Note') || 'Note';
+        const title = `Note ${noteCounter}`;
+        noteCounter++;
         createNote(title, '');
     }
 
@@ -1856,10 +2051,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add to notes array
         notes.push(note);
-        
+
         // Display updated notes
         displayNotes();
-        
+        showMessage('Note added');
+
         // If content is empty, immediately put the note in edit mode
         if (!content) {
             setTimeout(() => {
@@ -1879,7 +2075,9 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function displayNotes() {
         // Clear current notes display
-        notesContent.innerHTML = '';
+        // Preserve the message element
+        noNotesMessage.style.display = notes.length === 0 ? 'block' : 'none';
+        notesContent.innerHTML = ''; // Clear container
         
         // Show/hide no notes message
         if (notes.length === 0) {
@@ -1905,6 +2103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             titleEl.className = 'note-title';
             titleEl.textContent = note.title;
             
+
             const actionsEl = document.createElement('div');
             actionsEl.className = 'note-actions';
             
@@ -1929,6 +2128,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const contentEl = document.createElement('div');
             contentEl.className = 'note-content';
             contentEl.textContent = note.content;
+            contentEl.innerHTML = note.content.replace(/\n/g, '<br>'); // Preserve line breaks
             
             noteEl.appendChild(noteHeader);
             noteEl.appendChild(contentEl);
@@ -2257,7 +2457,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create save button (only for assistant messages)
             const saveBtn = document.createElement('button');
             saveBtn.className = 'chat-save-note-btn';
-            saveBtn.innerHTML = '📝';
+            saveBtn.innerHTML = '📋';
             saveBtn.title = 'Save to notes';
             saveBtn.addEventListener('click', function() {
                 saveMessageToNotes(content);
@@ -2535,7 +2735,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Prepare application context
         const appState = buildApplicationState();
-
+        
         // Send command for interpretation
         interpretCommand(command, appState);
     }
