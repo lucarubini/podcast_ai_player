@@ -308,6 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
         transcriptionContent.innerHTML = '';
         segments = [];
         exportBtn.style.display = 'none';
+        exportBtn.disabled = true;
         
         // Reset summary UI
         summaryContainer.style.display = 'none';
@@ -413,6 +414,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show transcription UI elements
         transcriptionContainer.style.display = 'block';
         exportBtn.style.display = 'inline-block';
+        exportBtn.disabled = false;
         summaryContainer.style.display = 'block';
         generateSummaryBtn.disabled = false;
     }
@@ -995,6 +997,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (segments.length === 0) {
             exportBtn.style.display = 'none';
+            exportBtn.disabled = true;
         }
     }
 
