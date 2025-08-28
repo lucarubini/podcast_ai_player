@@ -6,3 +6,4 @@ openai-whisper>=20231117 # This is the package for `whisper`
 requests>=2.31.0
 azure-cognitiveservices-speech>=1.36.0
 azure-identity>=1.15.0
+markdown
