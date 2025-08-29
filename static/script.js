@@ -2795,8 +2795,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Show detected intent and execute action
         addToCommandHistory('system', `Voice command detected: ${data.intent}`);
-        executeAction(data.action, data.parameters);
-
+        
+        // Check if this is a plan (multiple actions) or single action
+        if (data.actions && Array.isArray(data.actions)) {
+            // Execute the plan
+            executePlan(data);
+        } else if (data.action) {
+            // Legacy single action support
+            executeAction(data.action, data.parameters);
+        } else {
+            addToCommandHistory('system', 'No valid action found in command response');
+        }
         // Clear command input after delay for visual feedback
         setTimeout(() => {
             commandInput.value = '';
